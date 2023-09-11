@@ -23,16 +23,13 @@ def split_raw_pol(image: NDArray) -> NDArray:
     NDArray
         The polarized image that is splitted to 4 channels.
     """
+    if len(image.shape) != 2:
+        raise ValueError('Shape of polarized image must be 2D.')
     ch_90 = image[::2, ::2]
     ch_45 = image[::2, 1::2]
     ch_135 = image[1::2, ::2]
     ch_0 = image[1::2, 1::2]
-    if len(image.shape) == 2:
-        ch_90 = ch_90[..., None]
-        ch_45 = ch_45[..., None]
-        ch_135 = ch_135[..., None]
-        ch_0 = ch_0[..., None]
-    return np.concatenate((ch_0, ch_45, ch_90, ch_135), 2)
+    return np.stack((ch_0, ch_45, ch_90, ch_135), axis=2)
 
 
 def calc_Stocks_param(
@@ -61,8 +58,8 @@ def calc_Stocks_param(
     Tuple[float, float, float]
         Return S1, S2, S3 parameters.
     """
-    s_0 = ch_0 + ch_90 + 1
-    # s_0 = (ch_0 + ch_90 + ch_45 + ch_135) / 2
+    # s_0 = ch_0 + ch_90 + 1
+    s_0 = (ch_0 + ch_90 + ch_45 + ch_135) / 2
     s_1 = ch_0 - ch_90
     s_2 = ch_45 - ch_135
     s_0[s_0 == 0.0] = 1e-7
@@ -73,6 +70,8 @@ def calc_Stocks_param(
 
 def calc_AoLP(s_1: NDArray, s_2: NDArray) -> NDArray:
     """Calculate angle of polarization.
+
+    Normal values range is from -1.57 to 1.57.
 
     Parameters
     ----------
@@ -87,17 +86,12 @@ def calc_AoLP(s_1: NDArray, s_2: NDArray) -> NDArray:
         Pixelwice angle of polarization in radians. Range is (0, 2*pi)
     """
     AoLP = 0.5 * np.arctan2(s_2, s_1)
-    # mask = AoLP < 0
-    # AoLP[mask] += np.pi
-    # mask = s_1 >= 0
-    # AoLP[mask] += np.pi / 2
-
-    # mask = AoLP < 0
-    # AoLP[mask] += 2 * np.pi
     return AoLP
 
 def pol_intensity(s1: NDArray, s2: NDArray) -> NDArray:
     """Calculate polarization intensity.
+
+    Normal values range is from 0 to 1.
 
     Parameters
     ----------
@@ -111,11 +105,27 @@ def pol_intensity(s1: NDArray, s2: NDArray) -> NDArray:
     NDArray
         Calculated polarization intensity.
     """
-    return np.sqrt(np.square(s1) + np.square(s2) + 1)
-    # return np.sqrt(np.square(s1) + np.square(s2))
+    # return np.sqrt(np.square(s1) + np.square(s2) + 1)
+    return np.sqrt(np.square(s1) + np.square(s2))
 
 
 def calc_DoLP(s_0: NDArray, pol_int: NDArray) -> NDArray:
+    """Calculate degree of linear polarization.
+
+    Normal values range is from 0 to 1.
+
+    Parameters
+    ----------
+    s_0 : NDArray
+        S0 stock parameter.
+    pol_int : NDArray
+        Polarization intensity.
+
+    Returns
+    -------
+    NDArray
+        Degree of linear polarization.
+    """
     DoLP = pol_int / s_0
     return DoLP
 
@@ -126,27 +136,21 @@ def hsv_pol(aolp: NDArray, dolp: NDArray, pol_int: NDArray) -> NDArray:
     v = (pol_int / np.amax(pol_int) * 255).astype(np.uint8)
     hsv = cv2.merge((h, s, v))
     return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-    
-    
-    hue = (aolp / (np.pi * 2) * 255).astype(np.uint8)
-    saturation = dolp.astype(np.uint8)
-    value = np.ones_like(saturation, dtype=np.uint8) * 10
-
-    hsv = np.concatenate(
-        (value[..., None],
-         saturation[..., None],
-         hue[..., None]
-         ), axis=2)
-    hsv = cv2.applyColorMap(hsv, cv2.COLORMAP_HSV)
-    return hsv
-
-def dolp_to_img(dolp):
-    min_val = dolp.min()
-    max_val = dolp.max()
-    return ((dolp - min_val) / (max_val - min_val) * 255).astype(np.uint8)
 
 
-def aolp_to_img(aolp):
-    min_val = aolp.min()
-    max_val = aolp.max()
-    return ((aolp - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+def normalize_to_image(values: NDArray) -> NDArray:
+    """Convert array containing some float values to uint8 image.
+
+    Parameters
+    ----------
+    values : NDArray
+        Array with unnormalized values.
+
+    Returns
+    -------
+    NDArray
+        Normalized uint8 array.
+    """    
+    min_val = values.min()
+    max_val = values.max()
+    return ((values - min_val) / (max_val - min_val) * 255).astype(np.uint8)
