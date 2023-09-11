@@ -105,8 +105,8 @@ def pol_intensity(s1: NDArray, s2: NDArray) -> NDArray:
     NDArray
         Calculated polarization intensity.
     """
-    # return np.sqrt(np.square(s1) + np.square(s2) + 1)
-    return np.sqrt(np.square(s1) + np.square(s2))
+    return np.sqrt(np.square(s1) + np.square(s2) + 1)
+    # return np.sqrt(np.square(s1) + np.square(s2))
 
 
 def calc_DoLP(s_0: NDArray, pol_int: NDArray) -> NDArray:
