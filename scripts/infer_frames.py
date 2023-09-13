@@ -40,6 +40,7 @@ def show_pol(pth: Path) -> int:
     cv2.imshow('AoLP', resize_image(aolp_img, WIN_SIZE))
     cv2.imshow('DoLP', resize_image(dolp_img, WIN_SIZE))
     cv2.imshow('HSV', resize_image(hsv, WIN_SIZE))
+    print(pth.name)
     key = cv2.waitKey(0) & 0xFF
     return key
 
@@ -47,7 +48,10 @@ def show_pol(pth: Path) -> int:
 def main():
     if FRAME_PATH.is_dir():
         paths = list(FRAME_PATH.glob('*.npy'))
-        paths = list(sorted(paths, key=lambda pth: int(pth.name[4:-4])))
+        if sort_by_index:
+            paths = list(sorted(paths, key=lambda pth: int(pth.name[4:-4])))
+        else:
+            paths.sort()
         for path in paths:
             code = show_pol(path)
             if code == 27:
@@ -62,5 +66,6 @@ def main():
 
 if __name__ == '__main__':
     FRAME_PATH = Path('/home/pc0/projects/mako_camera/data/2023_09_09/raw_pol/')
-    WIN_SIZE = (500, 500)
+    WIN_SIZE = (700, 700)
+    sort_by_index = False
     main()
