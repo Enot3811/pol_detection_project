@@ -1,0 +1,10 @@
+numpy
+matplotlib
+opencv-python
+pandas
+
+flake8
+
+albumentations
+torch
+torchvision

@@ -1,4 +1,14 @@
+# Parameters, environment, data and other
 .vscode/*
+data/*
+venv/*
+work_dir/*
+
+# Pycache
 __pycache__*
 *.pyc
 *_.py
+
+# Model checkpoints
+*.pt
+*.pth
