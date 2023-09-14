@@ -32,10 +32,14 @@ def save_frame(frame: Frame, delay: Optional[int] = 1) -> None: # default Option
     global gain_val
     global exposure_target_val
 
-    Number_Frame = ('frame {}'.format(frame.data.frameID) + str(datetime.now()))
-    Number_Frame = ("".join(Number_Frame))
-    UID_Frame = str(frame.data.frameID)
-    
+    # get a copy of the frame data
+    image = frame.buffer_data_numpy()
+ 
+    image_to_show = cv2.cvtColor(image, cv2.COLOR_BAYER_RG2BGR)
+    image_to_show = cv2.resize(image_to_show, (500, 500), interpolation=cv2.INTER_AREA)
+    cv2.imshow('image', image_to_show)
+    cv2.waitKey(1)
+
     # Применение новых параметров камеры
     flag, new_auto_exposure_val, new_exposure_val, new_gain_val, new_exposure_target_val = recv_mess_cam_rgb()
     if new_auto_exposure_val != auto_exposure_val:
@@ -50,21 +54,13 @@ def save_frame(frame: Frame, delay: Optional[int] = 1) -> None: # default Option
     if new_exposure_target_val != exposure_target_val:
         exposure_target_val = new_exposure_target_val
         cam_rgb.ExposureAutoTarget = exposure_target_val
-    print('flag', flag)    
+    print('flag', flag)
     cam_rgb.GevTimestampControlLatch()
     send_mess_cam_rgb(cam_rgb.GevTimestampValue)    
     print(cam_rgb.GevTimestampValue)
     print('Exposure time:', cam_rgb.ExposureTimeAbs)
     print(cam_rgb.PtpStatus)
 
-    # get a copy of the frame data
-    image = frame.buffer_data_numpy()
- 
-    image_to_show = cv2.cvtColor(image, cv2.COLOR_BAYER_RG2RGB)
-    image_to_show = cv2.resize(image_to_show, (500, 500), interpolation=cv2.INTER_AREA)
-    cv2.imshow('image', image_to_show)
-
-    cv2.waitKey(1)
     if flag == 1:
        frame_name = f'rgb_{frame.data.frameID}.npy'
        np.save(DIR / frame_name, image)
@@ -115,7 +111,7 @@ if __name__ == '__main__':
     trig_off = 0
     count = 0
     auto_exposure_val = 0
-    exposure_val = 500
+    exposure_val = 100000
     gain_val = 0
     exposure_target_val = 50
 
@@ -127,7 +123,7 @@ if __name__ == '__main__':
         # GigE Control Block
         #cam_rgb.BandwidthControlMode = 'StreamBytesPerSecond' # 'StreamBytesPerSecond' , 'SCPD0', 'Both'
         cam_rgb.StreamBytesPerSecond = 48000000 
-        cam_rgb.GevSCPSPacketSize = 3000# MIN: 500 ; MAX: 9973 ; default 1500
+        # cam_rgb.GevSCPSPacketSize = 3000# MIN: 500 ; MAX: 9973 ; default 1500
         cam_rgb.PtpMode = 'Off'# 'Off', 'Slave', 'Master', 'Auto'
         cam_rgb.PtpMode = 'Slave'# 'Off', 'Slave', 'Master', 'Auto'
         print('start ptp status', cam_rgb.PtpStatus)
@@ -197,7 +193,7 @@ if __name__ == '__main__':
         #cam_rgb.ExposureTimeAbs = 250 # Fersting expouse set value
 
         cam_rgb.ExposureAuto = 'Off' # Функция автоматического расчета времени выдержки (экспозиции): 'Continuous' , 'Once', 'Off'
-        cam_rgb.ExposureTimeAbs = 50 # Жесткое задание времени выдержки в микросекундах
+        cam_rgb.ExposureTimeAbs = exposure_val # Жесткое задание времени выдержки в микросекундах
         cam_rgb.ExposureAutoTarget = 30
         #cam_rgb.ExposureTimeAbs = cam_rgb.ExposureTimeAbs - 200000 # correcting expouse
 
@@ -261,9 +257,9 @@ if __name__ == '__main__':
 
 
         # arm the cam_rgb and provide a function to be called upon frame ready
-        cam_rgb.arm('Continuous', save_frame, 2) #Continuous
+        cam_rgb.arm('Continuous', save_frame) #Continuous
 ##################
-        cam_rgb.AcquisitionMode = 'Continuous' # Режим сбора данных определяет поведение камеры при запуске сбора данных. «Continuous» режим: камера будет получать изображения, пока не сработает остановка получения. Режим «SingleFrame»: камера получает одно изображение. Режим «MultiFrame»: камера получит количество изображений, указанное в AcquisitionFrameCount. Режим «Recoder»: камера будет работать непрерывно, и при запуске события регистратора отправлять на хост изображения до и после запуска.
+        # cam_rgb.AcquisitionMode = 'Continuous' # Режим сбора данных определяет поведение камеры при запуске сбора данных. «Continuous» режим: камера будет получать изображения, пока не сработает остановка получения. Режим «SingleFrame»: камера получает одно изображение. Режим «MultiFrame»: камера получит количество изображений, указанное в AcquisitionFrameCount. Режим «Recoder»: камера будет работать непрерывно, и при запуске события регистратора отправлять на хост изображения до и после запуска.
         #cam_rgb.AcquisitionFrameCount = 3 # Это количество изображений, которые необходимо получить в режимах получения MultiFrame и Recorder. МИНИМУМ: 1 МАКСИМУМ: 65535
         #cam_rgb.RecorderPreEventCount = 0 # Это количество изображений перед событием, которые необходимо получить в режиме сбора данных регистратора. Это должно быть меньше или равно AcquisitionFrameCount. МИНИМУМ: 0 МАКСИМУМ: 65535
 

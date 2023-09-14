@@ -84,10 +84,12 @@ def create_window():
     cv2.createTrackbar(exposure, win, 32, 499993, nothing)
     cv2.createTrackbar(gain, win, 0, 40, nothing)
     cv2.createTrackbar(exposure_target, win, 0, 100, nothing)
+    cv2.createTrackbar(video, win, 0, 1, nothing)
     cv2.setTrackbarPos(auto_exposure, win, auto_exposure_val)
     cv2.setTrackbarPos(exposure, win, exposure_val)
     cv2.setTrackbarPos(gain, win, gain_val)
     cv2.setTrackbarPos(exposure_target, win, exposure_target_val)
+    cv2.setTrackbarPos(video, win, 0)
 
 
 if __name__ == '__main__':
@@ -122,6 +124,7 @@ if __name__ == '__main__':
         1: 'Once',
         2: 'Continuous'
     }
+    video = '0: photo / 1: video'
     logo = create_logo()
     create_window()
     while True:
@@ -158,4 +161,7 @@ if __name__ == '__main__':
         if flag == 2:
             break
         else:
-            flag = 0
+            if cv2.getTrackbarPos(video, win) == 0:
+                flag = 0
+            else:
+                flag = 1

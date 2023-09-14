@@ -51,6 +51,7 @@ def main(frames_dir: Path, weights: Union[Path, bool],
             # Из оставшихся новых берём 1 самый последний
             new_paths.sort()
             pth = new_paths[-1]
+            time.sleep(0.1)
 
             if show_time:
                 start = time.time()

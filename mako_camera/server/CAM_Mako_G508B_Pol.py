@@ -137,7 +137,7 @@ if __name__ == '__main__':
         # GigE Control Block
         #cam_pol.BandwidthControlMode = 'StreamBytesPerSecond' # 'StreamBytesPerSecond' , 'SCPD0', 'Both'
         cam_pol.StreamBytesPerSecond = 48000000 # MIN: 1000000 ; MAX: 124000000 ; default 115000000
-        cam_pol.GevSCPSPacketSize = 3000# MIN: 500 ; MAX: 9973 ; default 1500
+        # cam_pol.GevSCPSPacketSize = 3000# MIN: 500 ; MAX: 9973 ; default 1500
         cam_pol.PtpMode = 'Off'# 'Off', 'Slave', 'Master', 'Auto'
         cam_pol.PtpMode = 'Master'# 'Off', 'Slave', 'Master', 'Auto'
         print('start ptp status', cam_pol.PtpStatus)
