@@ -8,3 +8,7 @@ flake8
 albumentations
 torch
 torchvision
+
+zmq
+pickle5
+pymba

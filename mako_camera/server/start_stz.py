@@ -1,0 +1,8 @@
+import os
+
+
+def start_pol_cam():
+    os.system("tmux split-window 'python3 /home/firefly/Documents/camera/dual_cam/CAM_Mako_G508B_Pol.py'")
+    
+def start_pol_rgb():    
+    os.system("tmux split-window 'python3 /home/firefly/Documents/camera/dual_cam/CAM_Mako_G507C_RGB.py'")
