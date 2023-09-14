@@ -16,7 +16,7 @@ def recv_mess_cam_rgb() -> "tuple[int, str, int, int, int]":
     data = sock_cam_rgb.recv()
     flag, auto_exposure_val, exposure_val, gain_val, exposure_target_val = pickle.loads(data)
     return flag, auto_exposure_val, exposure_val, gain_val, exposure_target_val
-    
+
 
 def send_mess_cam_rgb(data):
     data = pickle.dumps(data)
@@ -167,7 +167,7 @@ if __name__ == '__main__':
             cam_rgb.Width = cam_rgb.WidthMax # Max 6476 # my user 4576      
             cam_rgb.OffsetX = 0 # начальный столбец области считывания матрицы ROI
             cam_rgb.OffsetY = 0 # начальная строка области считывания матрицы ROI
-            
+
         cam_rgb.Height = cam_rgb.HeightMax # Max 4856 # my user 4576 
         cam_rgb.Width = cam_rgb.WidthMax # Max 6476 # my user 4576 
 
@@ -226,8 +226,7 @@ if __name__ == '__main__':
 
 #Источник: https://cdn.alliedvision.com/fileadmin/content/documents/products/cam_rgbs/various/appnote/GigE/White_Balance_for_GigE_cam_rgbs.pdf
 
-        cam_rgb.AcquisitionFrameRateAbs = 1 # FPS ; Max 3.358 for full resolution ;  AFFECTED FEATURE(S):ExposureTimeAbs, AcquisitionFrameRateLimit 
-
+        cam_rgb.AcquisitionFrameRateAbs = 1 # FPS ; Max 3.358 for full resolution ;  AFFECTED FEATURE(S):ExposureTimeAbs, AcquisitionFrameRateLimit
 
         print ('cam_rgb ids',vimba.camera_ids())
         print ('Interface ids',vimba.interface_ids())
