@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.append(str(Path(__file__).parents[2]))
-from image_utils import resize_image, normalize_to_image
+from utils.image_utils import resize_image, normalize_to_image
 import mako_camera.cameras_utils as pol_func
 
 
