@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.image_utils import resize_image, normalize_to_image
+from utils.image_utils import resize_image, normalize_to_image, save_image
 import mako_camera.cameras_utils as pol_func
 
 
@@ -38,6 +38,11 @@ def show_pol(pth: Path) -> int:
     cv2.imshow('DoLP', resize_image(dolp_img, WIN_SIZE))
     cv2.imshow('HSV', resize_image(hsv, WIN_SIZE))
     print(pth.name)
+    if SAVE:
+        name = pth.name.split('.')[0] + '.jpg'
+        save_image(hsv, FRAME_PATH.parent / 'hsv' / name)
+        save_image(aolp_img, FRAME_PATH.parent / 'aolp' / name)
+        save_image(dolp_img, FRAME_PATH.parent / 'dolp' / name)
     key = cv2.waitKey(0) & 0xFF
     return key
 
@@ -64,5 +69,6 @@ def main():
 if __name__ == '__main__':
     FRAME_PATH = Path('path/to/frame/or/dir')
     WIN_SIZE = (700, 700)
-    SORT_BY_INDEX = False
+    SORT_BY_INDEX = True
+    SAVE = False
     main()
