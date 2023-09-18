@@ -14,7 +14,7 @@ from Yolov7.yolov7.dataset import create_yolov7_transforms
 from yolov7 import create_yolov7_model
 from yolov7.trainer import filter_eval_predictions
 from yolov7.models.yolo import Yolov7Model
-from utils.image_utils import read_image
+from utils.image_utils.image_functions import read_image
 from mako_camera.cameras_utils import split_raw_pol
 
 

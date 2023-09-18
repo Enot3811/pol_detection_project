@@ -12,7 +12,8 @@ from pathlib import Path
 import numpy as np
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.image_utils import resize_image, normalize_to_image, save_image
+from utils.image_utils.image_functions import (
+    resize_image, normalize_to_image, save_image)
 import mako_camera.cameras_utils as pol_func
 
 
@@ -67,7 +68,7 @@ def main():
 
 
 if __name__ == '__main__':
-    FRAME_PATH = Path('path/to/frame/or/dir')
+    FRAME_PATH = Path('data/camera/2023_09_09/bayer_rg8')
     WIN_SIZE = (700, 700)
     SORT_BY_INDEX = True
     SAVE = False

@@ -4,8 +4,8 @@
 from typing import List, Tuple, Union
 
 from numpy.typing import NDArray
-import cv2
 from torch import Tensor
+import cv2
 
 
 def image_tensor_to_numpy(tensor: Tensor) -> NDArray:
@@ -27,7 +27,7 @@ def image_tensor_to_numpy(tensor: Tensor) -> NDArray:
         return tensor.detach().cpu().permute(0, 2, 3, 1).numpy()
     elif len(tensor.shape) == 2:
         return tensor.detach().cpu().numpy()
-    
+
 
 def draw_bboxes(
     image: NDArray,

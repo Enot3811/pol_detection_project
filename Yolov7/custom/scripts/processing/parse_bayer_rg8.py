@@ -7,8 +7,8 @@ import sys
 import numpy as np
 import cv2
 
-sys.path.append(str(Path(__file__).parents[3]))
-from custom.utils.image_utils import save_image
+sys.path.append(str(Path(__file__).parents[4]))
+from utils.image_utils.image_functions import save_image
 
 
 def main():

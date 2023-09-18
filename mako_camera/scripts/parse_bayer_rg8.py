@@ -7,8 +7,8 @@ import sys
 import numpy as np
 import cv2
 
-sys.path.append(str(Path(__file__).parents[1]))
-from image_utils import save_image
+sys.path.append(str(Path(__file__).parents[2]))
+from utils.image_utils.image_functions import save_image
 
 
 def main():
@@ -28,6 +28,6 @@ def main():
 
 
 if __name__ == '__main__':
-    SOURCE_PTH = Path('path/to/source/dir')
-    DESTINATION_PTH = Path('path/to/destination/dir')
+    SOURCE_PTH = Path('data/camera/2023_09_14/bayer_rg8')
+    DESTINATION_PTH = Path('data/camera/2023_09_14/rgb')
     main()

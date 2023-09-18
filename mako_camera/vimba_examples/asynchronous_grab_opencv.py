@@ -33,7 +33,7 @@ from pathlib import Path
 from vimba import *
 
 sys.path.append(str(Path(__file__).parents[1]))
-from image_utils import resize_image
+from utils.image_utils.image_functions import resize_image
 
 
 def print_preamble():

@@ -107,3 +107,26 @@ def normalize_to_image(values: NDArray) -> NDArray:
     min_val = values.min()
     max_val = values.max()
     return ((values - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+
+
+def save_image(img: NDArray, path: Union[Path, str]) -> None:
+    """Save a given image to a defined path.
+
+    Parameters
+    ----------
+    img : NDArray
+        The saving image.
+    path : Union[Path, str]
+        The save path.
+
+    Raises
+    ------
+    RuntimeError
+        Could not save image.
+    """
+    if isinstance(path, str):
+        path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    success = cv2.imwrite(str(path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+    if not success:
+        raise RuntimeError('Could not save image.')
