@@ -2,7 +2,7 @@
 
 
 from pathlib import Path
-from typing import Tuple, Dict, Union, List
+from typing import Tuple, Dict, Union, List, Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -38,7 +38,7 @@ def intersect_dicts(da: Dict, db: Dict, exclude: Tuple = ()) -> Dict:
     -------
     Dict
         Пересечение.
-    """    
+    """
     return {
         k: v
         for k, v in da.items()
@@ -47,8 +47,8 @@ def intersect_dicts(da: Dict, db: Dict, exclude: Tuple = ()) -> Dict:
     }
 
 
-def load_sample(sample_pth: Path, input_size: int = 640) -> Tensor:
-    """Load one sample and prepare it to input to a yolo.
+def load_rgb_sample(sample_pth: Path, input_size: int = 640) -> Tensor:
+    """Load one RGB sample and prepare it to input to a yolo.
 
     Parameters
     ----------
@@ -70,13 +70,46 @@ def load_sample(sample_pth: Path, input_size: int = 640) -> Tensor:
     # Numpy array
     if str(sample_pth).split('.')[-1] == 'npy':
         image = np.load(sample_pth)
+        image = cv2.cvtColor(image, cv2.COLOR_BAYER_RG2BGR)
     # Image
     else:
         image = read_image(sample_pth)
+    if len(image.shape) != 3:
+        raise ValueError('Incorrect shape of image.')
 
-    if len(image.shape) == 2:
-        image = split_raw_pol(image)
-    elif len(image.shape) != 3:
+    preprocess_transforms = create_yolov7_transforms(
+        image_size=(input_size, input_size))
+    image = preprocess_transforms(image=image, bboxes=[], labels=[])['image']
+    image = torch.as_tensor(image.transpose(2, 0, 1), dtype=torch.float32)
+    image /= 255
+    image = image[None, ...]  # Add batch dim
+    return image
+
+
+def load_pol_sample(sample_pth: Path, input_size: int = 640) -> Tensor:
+    """Load one POL sample and prepare it to input to a yolo.
+
+    Parameters
+    ----------
+    sample_pth : Path
+        A path to the sample. It must have .npy or one of image extensions.
+    input_size : int, optional
+        An image size for resizing and padding.
+
+    Returns
+    -------
+    Tensor
+        Loaded and preprocessed image.
+
+    Raises
+    ------
+    ValueError
+        Incorrect shape of image.
+    """
+    # Numpy array
+    image = np.load(sample_pth)
+    image = split_raw_pol(image)
+    if len(image.shape) != 3:
         raise ValueError('Incorrect shape of image.')
 
     preprocess_transforms = create_yolov7_transforms(
@@ -158,7 +191,7 @@ def inference(
 
 
 def draw_bboxes_cv2(
-    image: NDArray, bboxes: List[Tuple], class_labels: List = None,
+    image: NDArray, bboxes: List[Tuple], class_labels: List[Any] = None,
     confidences: List = None, bbox_format: str = 'xyxy'
 ) -> NDArray:
     """Нарисовать рамки предсказанным объектам с помощью cv2
@@ -204,3 +237,18 @@ def draw_bboxes_cv2(
             cv2.putText(image, put_text, (x1, y1 - 2), 0, 0.3, (255, 255, 255), 1)
     
     return image
+
+
+coco_labels = [
+    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
+    'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
+    'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+    'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard',
+    'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
+    'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+    'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone',
+    'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
+    'hair drier', 'toothbrush']
+
+label2idx = {label: i for i, label in enumerate(coco_labels)}
+idx2label = {i: label for i, label in enumerate(coco_labels)}
