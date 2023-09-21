@@ -73,19 +73,21 @@ def save_frame(frame: Frame, delay: Optional[int] = 1) -> None: # default Option
     
     cv2.waitKey(1)
     if flag == 1:
-       frame_name = f'pol_{frame.data.frameID}.npy' 
-       np.save(DIR / frame_name, image)
-       #np.save(name_end_frame_POL, image)
-       frame_time = time.time() - start_time
-       #file_name = f'image/{cam_pol.GevTimestampValue}_pol_{frame_time}.jpg'
-       #cv2.imwrite(file_name, image)
+        if not DIR.exists():
+            DIR.mkdir(parents=True, exist_ok=True)
+        frame_name = f'pol_{frame.data.frameID}.npy'
+        np.save(DIR / frame_name, image)
+        #np.save(name_end_frame_POL, image)
+        frame_time = time.time() - start_time
+        #file_name = f'image/{cam_pol.GevTimestampValue}_pol_{frame_time}.jpg'
+        #cv2.imwrite(file_name, image)
 
-       count += 1
-       print('Frame', count, 'saved')
+        count += 1
+        print('Frame', count, 'saved')
     elif flag == 2:
-       cv2.destroyAllWindows()
-       print('############### 0 ESC##########')
-       trig_off = 1
+        cv2.destroyAllWindows()
+        print('############### 0 ESC##########')
+        trig_off = 1
 
 
 
@@ -120,12 +122,11 @@ if __name__ == '__main__':
 
     # Создание директории для сохранения получаемых снимков,
     # подготовка глобальных параметров
-    DIR = Path(f'images_pol_{datetime.now()}')
-    DIR.mkdir(parents=True, exist_ok=True)
+    DIR = Path(__file__).parents[2] / 'data' / 'camera' / 'new' / f'images_pol_{datetime.now()}'
     trig_off = 0
     count = 0
     auto_exposure_val = 0
-    exposure_val = 500
+    exposure_val = 100000
     gain_val = 0
     exposure_target_val = 50
 

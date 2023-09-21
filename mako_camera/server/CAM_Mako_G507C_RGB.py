@@ -2,7 +2,7 @@ from typing import Optional
 import cv2
 import numpy as np
 from pymba import Frame, Vimba
-from datetime import datetime, time
+from datetime import datetime
 import time
 import zmq
 import pickle5 as pickle
@@ -20,10 +20,10 @@ def recv_mess_cam_rgb() -> "tuple[int, str, int, int, int]":
 
 def send_mess_cam_rgb(data):
     data = pickle.dumps(data)
-    sock_cam_rgb.send(data) 
+    sock_cam_rgb.send(data)
 
 
-def save_frame(frame: Frame, delay: Optional[int] = 1) -> None: # default Optional[int] = 1
+def save_frame(frame: Frame, delay: Optional[int] = 1) -> None:
     global trig_off
     global count
     global DIR
@@ -35,7 +35,7 @@ def save_frame(frame: Frame, delay: Optional[int] = 1) -> None: # default Option
     # get a copy of the frame data
     image = frame.buffer_data_numpy()
  
-    image_to_show = cv2.cvtColor(image, cv2.COLOR_BAYER_RG2BGR)
+    image_to_show = cv2.cvtColor(image, cv2.COLOR_BAYER_RG2RGB)
     image_to_show = cv2.resize(image_to_show, (500, 500), interpolation=cv2.INTER_AREA)
     cv2.imshow('image', image_to_show)
     cv2.waitKey(1)
@@ -62,18 +62,20 @@ def save_frame(frame: Frame, delay: Optional[int] = 1) -> None: # default Option
     print(cam_rgb.PtpStatus)
 
     if flag == 1:
-       frame_name = f'rgb_{frame.data.frameID}.npy'
-       np.save(DIR / frame_name, image)
-       frame_time = time.time() - start_time
-       #file_name = f'image/{cam_rgb.GevTimestampValue}_rgb_{frame_time}.jpg'
-       #cv2.imwrite(file_name, image)
+        if not DIR.exists():
+            DIR.mkdir(parents=True, exist_ok=True)
+        frame_name = f'rgb_{frame.data.frameID}.npy'
+        np.save(DIR / frame_name, image)
+        frame_time = time.time() - start_time
+        # file_name = f'image/{cam_rgb.GevTimestampValue}_rgb_{frame_time}.jpg'
+        # cv2.imwrite(file_name, image)
 
-       count += 1
-       print('Frame', count, 'saved')
+        count += 1
+        print('Frame', count, 'saved')
     elif flag == 2:
-       cv2.destroyAllWindows()
-       print('############### 0 ESC##########')
-       trig_off = 1
+        cv2.destroyAllWindows()
+        print('############### 0 ESC##########')
+        trig_off = 1
 
 
 def close_exit():
@@ -86,8 +88,8 @@ if __name__ == '__main__':
     # Запуск RGB сервера
     context = zmq.Context()
     sock_cam_rgb = context.socket(zmq.REP)
-    sock_cam_rgb.setsockopt (zmq.LINGER, 0)
-    nomer_porta = 12345  
+    sock_cam_rgb.setsockopt(zmq.LINGER, 0)
+    nomer_porta = 12345
     port = 'tcp://127.0.0.1:' + str(nomer_porta)
     try:
         sock_cam_rgb.bind(port)
@@ -106,8 +108,7 @@ if __name__ == '__main__':
 
     # Создание директории для сохранения получаемых снимков,
     # подготовка глобальных параметров
-    DIR = Path(f'images_rgb_{datetime.now()}')
-    DIR.mkdir(parents=True, exist_ok=True)
+    DIR = Path(__file__).parents[2] / 'data' / 'camera' / 'new' / f'images_rgb_{datetime.now()}'
     trig_off = 0
     count = 0
     auto_exposure_val = 0
@@ -122,7 +123,7 @@ if __name__ == '__main__':
 
         # GigE Control Block
         #cam_rgb.BandwidthControlMode = 'StreamBytesPerSecond' # 'StreamBytesPerSecond' , 'SCPD0', 'Both'
-        cam_rgb.StreamBytesPerSecond = 48000000 
+        cam_rgb.StreamBytesPerSecond = 48000000
         # cam_rgb.GevSCPSPacketSize = 3000# MIN: 500 ; MAX: 9973 ; default 1500
         cam_rgb.PtpMode = 'Off'# 'Off', 'Slave', 'Master', 'Auto'
         cam_rgb.PtpMode = 'Slave'# 'Off', 'Slave', 'Master', 'Auto'
@@ -159,13 +160,13 @@ if __name__ == '__main__':
             cam_rgb.OffsetY = 0 # начальная строка области считывания матрицы ROI
 
         except:
-            cam_rgb.Height = cam_rgb.HeightMax # Max 4856 # my user 4576 
-            cam_rgb.Width = cam_rgb.WidthMax # Max 6476 # my user 4576      
+            cam_rgb.Height = cam_rgb.HeightMax # Max 4856 # my user 4576
+            cam_rgb.Width = cam_rgb.WidthMax # Max 6476 # my user 4576
             cam_rgb.OffsetX = 0 # начальный столбец области считывания матрицы ROI
             cam_rgb.OffsetY = 0 # начальная строка области считывания матрицы ROI
 
-        cam_rgb.Height = cam_rgb.HeightMax # Max 4856 # my user 4576 
-        cam_rgb.Width = cam_rgb.WidthMax # Max 6476 # my user 4576 
+        cam_rgb.Height = cam_rgb.HeightMax # Max 4856 # my user 4576
+        cam_rgb.Width = cam_rgb.WidthMax # Max 6476 # my user 4576
 
         cam_rgb.DSPSubregionBottom = cam_rgb.Height
         cam_rgb.DSPSubregionLeft = 0

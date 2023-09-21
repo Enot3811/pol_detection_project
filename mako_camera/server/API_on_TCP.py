@@ -75,13 +75,14 @@ def create_logo():
 
 def create_window():
     auto_exposure_val = 0
-    exposure_val = 500
+    exposure_val = 100000
     gain_val = 0
     exposure_target_val = 50
     def nothing(x): pass
     cv2.namedWindow(win)
     cv2.createTrackbar(auto_exposure, win, 0, 2, nothing)
-    cv2.createTrackbar(exposure, win, 32, 499993, nothing)
+    cv2.createTrackbar(exposure, win, 0, 499993, nothing)
+    cv2.setTrackbarMin(exposure, win, 32)
     cv2.createTrackbar(gain, win, 0, 40, nothing)
     cv2.createTrackbar(exposure_target, win, 0, 100, nothing)
     cv2.createTrackbar(video, win, 0, 1, nothing)
@@ -93,14 +94,14 @@ def create_window():
 
 
 if __name__ == '__main__':
-    #server cam pol
+    # server cam pol
     context = zmq.Context()
     sock_cam_pol = context.socket(zmq.REQ)
     port = 'tcp://localhost:1234'
     sock_cam_pol.connect(port)
     print('Cam POL is ready')
 
-    #server cam RGB
+    # server cam RGB
     context = zmq.Context()
     sock_cam_rgb = context.socket(zmq.REQ)
     port = 'tcp://localhost:12345'
