@@ -4,8 +4,9 @@
 from typing import List, Tuple, Union
 
 from numpy.typing import NDArray
-from torch import Tensor
 import cv2
+from torch import Tensor, tensor
+from torchvision.ops import box_convert
 
 
 def image_tensor_to_numpy(tensor: Tensor) -> NDArray:
@@ -29,28 +30,34 @@ def image_tensor_to_numpy(tensor: Tensor) -> NDArray:
         return tensor.detach().cpu().numpy()
 
 
-def draw_bboxes(
+def draw_bounding_boxes(
     image: NDArray,
-    bboxes: List[Tuple],
+    bboxes: List[List[Union[float, int]]],
     class_labels: List[Union[str, int, float]] = None,
     confidences: List[float] = None,
-    bbox_format: str = 'xyxy'
+    bbox_format: str = 'xyxy',
+    line_width: int = 1,
+    color: Tuple[int, int, int] = (255, 255, 255)
 ) -> NDArray:
-    """Draw bounding boxes on a given image.
+    """Draw bounding boxes and corresponding labels on a given image.
 
     Parameters
     ----------
     image : NDArray
-        The given image.
-    bboxes : List[Tuple]
+        The given image with shape `(h, w, c)`.
+    bboxes : List[List[Union[float, int]]]
         The bounding boxes with shape `(n_boxes, 4)`.
     class_labels : List, optional
         Bounding boxes' labels. By default is None.
     confidences : List, optional
         Bounding boxes' confidences. By default is None.
     bbox_format : str, optional
-        A bounding boxes' format (only xyxy is available).
-        By default is 'xyxy'.
+        A bounding boxes' format. It should be one of "xyxy", "xywh" or
+        "cxcywh". By default is 'xyxy'.
+    line_width : int, optional
+        A width of the bounding boxes' lines. By default is 1.
+    color : Tuple[int, int, int], optional
+        A color of the bounding boxes' lines. By default is `(255, 255, 255)`.
 
     Returns
     -------
@@ -60,19 +67,25 @@ def draw_bboxes(
     Raises
     ------
     NotImplementedError
-        Only xyxy bounding boxes format is available.
+        Implemented only for "xyxy", "xywh" and "cxcywh"
+        bounding boxes formats.
     """
     image = image.copy()
+
+    # Convert to "xyxy"
     if bbox_format != 'xyxy':
-        # TODO
-        raise NotImplementedError(
-            'Only xyxy bounding boxes format is available.')
+        if bbox_format in ('xywh', 'cxcywh'):
+            bboxes = box_convert(tensor(bboxes), bbox_format, 'xyxy').tolist()
+        else:
+            raise NotImplementedError(
+                'Implemented only for "xyxy", "xywh" and "cxcywh"'
+                'bounding boxes formats.')
     
     for i, bbox in enumerate(bboxes):
         bbox = list(map(int, bbox))
         x1, y1, x2, y2 = bbox
         cv2.rectangle(image, (x1, y1), (x2, y2),
-                      color=(255, 255, 255), thickness=1)
+                      color=color, thickness=line_width)
         if class_labels is not None:
             put_text = f'cls: {class_labels[i]} '
         else:
