@@ -2,7 +2,6 @@
 
 
 import time
-import argparse
 
 import zmq
 import pickle5 as pickle
@@ -24,6 +23,7 @@ def send_mess_cam_pol(data):
     """
     data = pickle.dumps(data)
     sock_cam_pol.send(data)
+
 
 def recv_server_cam_pol() -> int:
     """Получение сообщения от поляризационной камеры.
@@ -48,6 +48,7 @@ def send_mess_cam_rgb(data):
     data = pickle.dumps(data)
     sock_cam_rgb.send(data)
 
+
 def recv_server_cam_rgb():
     """Получение сообщения от rgb камеры.
     
@@ -55,7 +56,8 @@ def recv_server_cam_rgb():
     """
     recv_data = sock_cam_rgb.recv()
     timestamp_rgb = pickle.loads(recv_data)
-    return timestamp_rgb    
+    return timestamp_rgb
+
 
 def get_user_input(user_input_ref):
     while True:
@@ -66,19 +68,22 @@ def get_user_input(user_input_ref):
             user_input_ref[0] = input_str
             break
 
+
 def create_logo():
     cv_frame = np.zeros((50, 640, 1), np.uint8)
     cv_frame[:] = 0
     cv2.putText(cv_frame, 'ESC to exit, enter to save.', org=(30, 30),
-                fontScale=1, color=255, thickness=1, fontFace=cv2.FONT_HERSHEY_COMPLEX_SMALL)
+                fontScale=1, color=255, thickness=1,
+                fontFace=cv2.FONT_HERSHEY_COMPLEX_SMALL)
     return cv_frame
+
 
 def create_window():
     auto_exposure_val = 0
     exposure_val = 100000
     gain_val = 0
     exposure_target_val = 50
-    def nothing(x): pass
+    def nothing(x): pass  # noqa
     cv2.namedWindow(win)
     cv2.createTrackbar(auto_exposure, win, 0, 2, nothing)
     cv2.createTrackbar(exposure, win, 0, 499993, nothing)
@@ -142,22 +147,23 @@ if __name__ == '__main__':
             flag = 1
 
         # Get parameters
-        auto_exposure_val = auto_exposure_vals[cv2.getTrackbarPos(auto_exposure, win)]
+        auto_exposure_val = auto_exposure_vals[
+            cv2.getTrackbarPos(auto_exposure, win)]
         exposure_val = cv2.getTrackbarPos(exposure, win)
         gain_val = cv2.getTrackbarPos(gain, win)
         exposure_target_val = cv2.getTrackbarPos(exposure_target, win)
 
-        data_to_pol = (flag, auto_exposure_val, exposure_val, gain_val, exposure_target_val)
+        data_to_pol = (flag, auto_exposure_val, exposure_val,
+                       gain_val, exposure_target_val)
         send_mess_cam_pol(data_to_pol)
         timestamp_pol = recv_server_cam_pol()
-        #print('timestamp_pol', timestamp_pol)
 
-        data_to_rgb = (flag, auto_exposure_val, exposure_val, gain_val, exposure_target_val)
+        data_to_rgb = (flag, auto_exposure_val, exposure_val,
+                       gain_val, exposure_target_val)
         send_mess_cam_rgb(data_to_rgb)
         timestamp_rgb = recv_server_cam_rgb()
-        #print('timestamp_rgb', timestamp_rgb)
         
-        print(timestamp_pol-timestamp_rgb)
+        print(timestamp_pol - timestamp_rgb)
 
         if flag == 2:
             break
