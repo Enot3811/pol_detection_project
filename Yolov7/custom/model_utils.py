@@ -121,32 +121,68 @@ def load_pol_sample(sample_pth: Path, input_size: int = 640) -> Tensor:
     return image
 
 
-def load_model(pretrained: Union[Path, bool] = False, num_channels: int = 3):
-    # If there is a pt weights
-    if isinstance(pretrained, Path):
-        model = create_yolov7_model(
-            'yolov7', pretrained=False, num_channels=num_channels)
-        state_dict = intersect_dicts(
-            torch.load(pretrained)['model_state_dict'],
-            model.state_dict(),
-            exclude=['anchor'],
-        )
-        model.load_state_dict(state_dict, strict=False)
-        print(
-            f'Transferred {len(state_dict)} / {len(model.state_dict())} '
-            f'items from {pretrained}'
-        )
-    # If need to load pretrained or clean model
-    elif isinstance(pretrained, bool):
-        if pretrained and num_channels == 4:
-            raise ValueError('There are not pretrained weights'
-                             'for 4 channels model.')
+def load_yolo_checkpoint(weights_pth: Path) -> Yolov7Model:
+    """Create yolo model and load given weights.
 
-        model = create_yolov7_model(
-            'yolov7', pretrained=pretrained, num_channels=num_channels)
-    else:
-        raise
+    The loaded weights are checked to determine a number of channels
+    and a corresponding model is created.
 
+    Parameters
+    ----------
+    weights : Path
+        A path to pt file with model weights.
+
+    Returns
+    -------
+    Yolov7Model
+        The loaded yolo checkpoint.
+    """
+    state_dict = torch.load(weights_pth)['model_state_dict']
+    # Get first conv layer and check its depth
+    num_channels = state_dict['model.0.conv.weight'].shape[1]
+    
+    # Create empty model
+    model = create_yolov7_model(
+        'yolov7', pretrained=False, num_channels=num_channels)
+    # Load weights
+    state_dict = intersect_dicts(
+        state_dict,
+        model.state_dict(),
+        exclude=['anchor'],
+    )
+    model.load_state_dict(state_dict, strict=False)
+    print(
+        f'Transferred {len(state_dict)} / {len(model.state_dict())} '
+        f'items from {weights_pth}')
+    model = model.eval()
+    return model
+    
+
+def create_yolo(num_channels: int = 3, pretrained: bool = True) -> Yolov7Model:
+    """Create yolo model.
+
+    Parameters
+    ----------
+    num_channels : int, optional
+        A number of model's channels. By default is 3.
+    pretrained : bool, optional
+        Whether to load the official pretrained weights. By default is `True`.
+
+    Returns
+    -------
+    Yolov7Model
+        The created yolo model.
+
+    Raises
+    ------
+    ValueError
+        There are not pretrained weights for 4 channels model.
+    """
+    if num_channels == 4 and pretrained:
+        raise ValueError('There are not pretrained weights '
+                         'for 4 channels model.')
+    model = create_yolov7_model(
+        'yolov7', pretrained=pretrained, num_channels=num_channels)
     model = model.eval()
     return model
 
