@@ -10,11 +10,9 @@ from pathlib import Path
 from vimba import *
 import numpy as np
 
-sys.path.append(str(Path(__file__).parent))
-from utils.image_utils.image_functions import resize_image
-from mako_camera.cameras_utils import (
-    split_raw_pol, calc_AoLP, calc_DoLP, calc_Stocks_param, hsv_pol,
-    pol_intensity, aolp_to_img, dolp_to_img)
+sys.path.append(str(Path(__file__).parents[2]))
+from utils.image_utils.image_functions import resize_image, normalize_to_image
+import mako_camera.cameras_utils as cam_func
 
 
 def abort(reason: str, return_code: int = 1, usage: bool = False):
@@ -81,10 +79,10 @@ class Handler:
         self.shutdown_event = threading.Event()
 
     def __call__(self, cam: Camera, frame: Frame):
-        ENTER_KEY_CODE = 13
+        ESC_KEY_CODE = 27
 
         key = cv2.waitKey(1)
-        if key == ENTER_KEY_CODE:
+        if key == ESC_KEY_CODE:
             self.shutdown_event.set()
             return
 
@@ -94,16 +92,18 @@ class Handler:
                   cam.get_feature_by_name('ExposureTimeAbs').get())
 
             img = frame.as_opencv_image()
-            split_channels = split_raw_pol(img).astype(np.float32) / 255
-            s0, s1, s2 = calc_Stocks_param(
+            img = np.squeeze(img)
+            split_channels = (
+                cam_func.split_raw_pol(img).astype(np.float32) / 255)
+            s0, s1, s2 = cam_func.calc_Stocks_param(
                 split_channels[..., 0], split_channels[..., 1],
                 split_channels[..., 2], split_channels[..., 3])
-            pol_int = pol_intensity(s1, s2)
-            aolp = calc_AoLP(s1, s2)
-            dolp = calc_DoLP(s0, pol_int)
-            dolp_img = dolp_to_img(dolp)
-            aolp_img = aolp_to_img(aolp)
-            hsv = hsv_pol(aolp, dolp, pol_int)
+            pol_int = cam_func.pol_intensity(s1, s2)
+            aolp = cam_func.calc_AoLP(s1, s2)
+            dolp = cam_func.calc_DoLP(s0, pol_int)
+            dolp_img = normalize_to_image(dolp)
+            aolp_img = normalize_to_image(aolp)
+            hsv = cam_func.hsv_pol(aolp, dolp, pol_int)
 
             cv2.imshow('Original image', resize_image(img, (500, 500)))
             cv2.imshow('Channel 0', resize_image(split_channels[..., 0], (500, 500)))

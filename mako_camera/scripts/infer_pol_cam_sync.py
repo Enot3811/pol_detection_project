@@ -8,11 +8,11 @@ from pathlib import Path
 from vimba import *
 import numpy as np
 
-sys.path.append(str(Path(__file__).parent))
-from utils.image_utils.image_functions import resize_image
+sys.path.append(str(Path(__file__).parents[2]))
+from utils.image_utils.image_functions import resize_image, normalize_to_image
 from mako_camera.cameras_utils import (
     split_raw_pol, calc_AoLP, calc_DoLP, calc_Stocks_param, hsv_pol,
-    pol_intensity, dolp_to_img, aolp_to_img)
+    pol_intensity)
 
 
 def abort(reason: str, return_code: int = 1, usage: bool = False):
@@ -69,6 +69,7 @@ def main():
                     cam.get_feature_by_name('ExposureTimeAbs').get())
 
                 img = frame.as_opencv_image()
+                img = np.squeeze(img)
                 split_channels = split_raw_pol(img).astype(np.float32) / 255
                 s0, s1, s2 = calc_Stocks_param(
                     split_channels[..., 0], split_channels[..., 1],
@@ -76,8 +77,8 @@ def main():
                 pol_int = pol_intensity(s1, s2)
                 aolp = calc_AoLP(s1, s2)
                 dolp = calc_DoLP(s0, pol_int)
-                dolp_img = dolp_to_img(dolp)
-                aolp_img = aolp_to_img(aolp)
+                dolp_img = normalize_to_image(dolp)
+                aolp_img = normalize_to_image(aolp)
                 hsv = hsv_pol(aolp, dolp, pol_int)
 
                 cv2.imshow('Original image', resize_image(img, (500, 500)))
