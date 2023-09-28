@@ -2,8 +2,9 @@
 
 
 from pathlib import Path
-from typing import Dict, Union, Callable, Any
+from typing import Dict, Union, Callable, Tuple, List
 
+from numpy.typing import NDArray
 from torch.utils.data import Dataset
 
 from utils.image_utils.image_functions import read_image
@@ -48,7 +49,9 @@ class ObjectDetectionDataset(Dataset):
     def __len__(self):
         return len(len(self.cvat_dset))
 
-    def __getitem__(self, idx: int) -> Any:
+    def __getitem__(
+        self, idx: int
+    ) -> Tuple[NDArray, NDArray, NDArray, str, Tuple[int, int]]:
         """Return a sample by its index.
 
         Parameters
@@ -58,22 +61,46 @@ class ObjectDetectionDataset(Dataset):
 
         Returns
         -------
-        Any
+        Tuple[NDArray, NDArray, NDArray, str, Tuple[int, int]]
             By default sample is a tuple that contains
-            image ndarray with shape `(h, w, c)`,
-            bounding boxes float list with shape `(n_obj, 4)`
-            and classes float list with shape `(n_obj,)`.
+            an image ndarray with shape `(h, w, c)`,
+            a bounding boxes float list with shape `(n_obj, 4)`,
+            a classes float list with shape `(n_obj,)`,
+            an image name string.
+            and a tuple with original image shape.
         """
-        img_name, classes, bboxes, shape = self.cvat_dset[idx]
-        classes = map(lambda label: float(self.name2index[label]), classes)
+        sample = self.cvat_dset[idx]
+        img_name = sample['name']
+        classes = sample['labels']
+        bboxes = sample['bboxes']
+        shape = sample['shape']
+        classes = list(map(lambda label: float(self.name2index[label]),
+                           classes))
         img_pth = self.image_dir / img_name
         image = read_image(img_pth)
 
         if self.transforms:
-            transformed = self.transforms(
-                image=image, bboxes=bboxes, classes=classes)
-            image = transformed['image']  # tensor
-            bboxes = transformed['bboxes']  # list[list[float]]
-            classes = transformed['classes']  # list[float]
+            image, bboxes, classes = self.apply_transforms(
+                image, bboxes, classes)
+        return image, bboxes, classes, img_name, shape
+    
+    def apply_transforms(
+        self, image: NDArray, bboxes: List[List[float]], classes: List[float]
+    ) -> Tuple[NDArray, List[List[float]], List[float]]:
+        """Apply transformations.
 
+        Parameters
+        ----------
+        image : NDArray
+            An image array with shape `(h, w, c)`.
+        bboxes : List[List[float]]
+            List of bounding boxes with shape `(n_boxes, 4)`.
+        classes : List[float]
+            Classes labels with shape `(n_boxes,)`.
+        """
+        transformed = self.transforms(
+            image=image, bboxes=bboxes, classes=classes)
+        image = transformed['image']  # ArrayLike or Tensor
+        bboxes = transformed['bboxes']  # list[list[float]]
+        classes = transformed['classes']  # list[float]
         return image, bboxes, classes
