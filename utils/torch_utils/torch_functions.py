@@ -34,6 +34,7 @@ def draw_bounding_boxes(
     image: NDArray,
     bboxes: List[List[Union[float, int]]],
     class_labels: List[Union[str, int, float]] = None,
+    exclude_classes: List[str, int, float] = (),
     confidences: List[float] = None,
     bbox_format: str = 'xyxy',
     line_width: int = 1,
@@ -49,6 +50,8 @@ def draw_bounding_boxes(
         The bounding boxes with shape `(n_boxes, 4)`.
     class_labels : List, optional
         Bounding boxes' labels. By default is None.
+    exclude_classes : List[str, int, float]
+        Classes which bounding boxes won't be showed. By default is ().
     confidences : List, optional
         Bounding boxes' confidences. By default is None.
     bbox_format : str, optional
@@ -82,10 +85,17 @@ def draw_bounding_boxes(
                 'bounding boxes formats.')
     
     for i, bbox in enumerate(bboxes):
+        # Check if exclude
+        if class_labels is not None and class_labels[i] in exclude_classes:
+            continue
+
+        # Draw bbox
         bbox = list(map(int, bbox))
         x1, y1, x2, y2 = bbox
         cv2.rectangle(image, (x1, y1), (x2, y2),
                       color=color, thickness=line_width)
+        
+        # Put text if needed
         if class_labels is not None:
             put_text = f'cls: {class_labels[i]} '
         else:
