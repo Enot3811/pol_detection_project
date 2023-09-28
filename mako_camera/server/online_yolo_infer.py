@@ -1,27 +1,27 @@
-"""Запустить yolo на сканирование папки и обработку всех новых кадров."""
+"""Запустить yolo на сканирование папки и обработку всех новых кадров.
+
+Пока работает только с официальными весами,
+и для поляризации только в псевдо RGB.
+"""
 
 import sys
 import time
 from pathlib import Path
-from typing import Union
 import argparse
 
 import numpy as np
 import cv2
 
 sys.path.append(str(Path(__file__).parents[2]))
-# TODO сделать что-нибудь с этим
-sys.path.append(str(Path(__file__).parents[2] / 'Yolov7'))
 from Yolov7.custom.model_utils import (
-    load_model, load_rgb_sample, load_pol_sample,
-    inference, draw_bboxes_cv2, idx2label)
+    create_yolo, load_rgb_sample, load_pol_sample, inference, idx2label)
 from utils.torch_utils.torch_functions import image_tensor_to_numpy
+from utils.torch_utils.torch_functions import draw_bounding_boxes
 
 
 def main(
     frames_dir: Path,
     polarized: bool,
-    weights: Union[Path, bool],
     conf_thresh: float = 0.6,
     iou_thresh: float = 0.2,
     show_time: bool = False
@@ -78,7 +78,7 @@ def main(
 
             # Первая загрузка модели
             if model is None:
-                model = load_model(weights, c)
+                model = create_yolo(num_channels=c)
             boxes, class_ids, confidences = inference(
                 model, image, conf_thresh, iou_thresh)
 
@@ -89,8 +89,9 @@ def main(
 
             labels = list(map(lambda idx: idx2label[idx],
                               class_ids.tolist()[:30]))
-            image = draw_bboxes_cv2(
-                image[0], boxes.tolist()[:30],
+            image = draw_bounding_boxes(
+                image[0],
+                boxes.tolist()[:30],
                 labels,
                 confidences.tolist()[:30])
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -115,14 +116,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--polarized',
                         help='Поляризационная съёмка. Если не указан, то RGB.',
                         action='store_true')
-    parser.add_argument('--weights',
-                        help='Веса модели. Путь к pt файлу или '
-                        'bool для загрузки официальных весов',
-                        type=str, default='True')
     parser.add_argument('--conf_thresh',
                         help='Порог уверенности модели.', type=float,
                         default=0.6)
-    # TODO проверить, почему ни на что не влияет
     parser.add_argument('--iou_thresh',
                         help='Порог перекрытия рамок.', type=float,
                         default=0.2)
@@ -140,11 +136,4 @@ if __name__ == '__main__':
     conf_thresh = args.conf_thresh
     iou_thresh = args.iou_thresh
     show_time = args.show_time
-    weights = args.weights
-    if weights.lower() == 'true':
-        weights = True
-    elif weights.lower() == 'false':
-        weights = False
-    else:
-        weights = Path(weights)
-    main(frames_dir, polarized, weights, conf_thresh, iou_thresh, show_time)
+    main(frames_dir, polarized, conf_thresh, iou_thresh, show_time)
