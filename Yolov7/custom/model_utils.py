@@ -2,20 +2,14 @@
 
 
 from pathlib import Path
-from typing import Tuple, Dict, Union, List, Any
+from typing import Tuple, Dict
 
-import numpy as np
-from numpy.typing import NDArray
-import cv2
 import torch
-from torch import Tensor
+from torch import Tensor, FloatTensor
 
-from Yolov7.yolov7.dataset import create_yolov7_transforms
 from yolov7 import create_yolov7_model
 from yolov7.trainer import filter_eval_predictions
 from yolov7.models.yolo import Yolov7Model
-from utils.image_utils.image_functions import read_image
-from mako_camera.cameras_utils import split_raw_pol
 
 
 def intersect_dicts(da: Dict, db: Dict, exclude: Tuple = ()) -> Dict:
@@ -45,80 +39,6 @@ def intersect_dicts(da: Dict, db: Dict, exclude: Tuple = ()) -> Dict:
         if (k in db and not any(x in k for x in exclude) and
             v.shape == db[k].shape)
     }
-
-
-def load_rgb_sample(sample_pth: Path, input_size: int = 640) -> Tensor:
-    """Load one RGB sample and prepare it to input to a yolo.
-
-    Parameters
-    ----------
-    sample_pth : Path
-        A path to the sample. It must have .npy or one of image extensions.
-    input_size : int, optional
-        An image size for resizing and padding.
-
-    Returns
-    -------
-    Tensor
-        Loaded and preprocessed image.
-
-    Raises
-    ------
-    ValueError
-        Incorrect shape of image.
-    """
-    # Numpy array
-    if str(sample_pth).split('.')[-1] == 'npy':
-        image = np.load(sample_pth)
-        image = cv2.cvtColor(image, cv2.COLOR_BAYER_RG2BGR)
-    # Image
-    else:
-        image = read_image(sample_pth)
-    if len(image.shape) != 3:
-        raise ValueError('Incorrect shape of image.')
-
-    preprocess_transforms = create_yolov7_transforms(
-        image_size=(input_size, input_size))
-    image = preprocess_transforms(image=image, bboxes=[], labels=[])['image']
-    image = torch.as_tensor(image.transpose(2, 0, 1), dtype=torch.float32)
-    image /= 255
-    image = image[None, ...]  # Add batch dim
-    return image
-
-
-def load_pol_sample(sample_pth: Path, input_size: int = 640) -> Tensor:
-    """Load one POL sample and prepare it to input to a yolo.
-
-    Parameters
-    ----------
-    sample_pth : Path
-        A path to the sample. It must have .npy or one of image extensions.
-    input_size : int, optional
-        An image size for resizing and padding.
-
-    Returns
-    -------
-    Tensor
-        Loaded and preprocessed image.
-
-    Raises
-    ------
-    ValueError
-        Incorrect shape of image.
-    """
-    # Numpy array
-    image = np.load(sample_pth)
-    image = split_raw_pol(image)
-    if len(image.shape) != 3:
-        raise ValueError('Incorrect shape of image.')
-
-    preprocess_transforms = create_yolov7_transforms(
-        image_size=(input_size, input_size))
-    image = preprocess_transforms(image=image, bboxes=[], labels=[])['image']
-    image = torch.as_tensor(image.transpose(2, 0, 1), dtype=torch.float32)
-    image /= 255
-    image = image[None, ...]  # Add batch dim
-    return image
 
 
 def load_yolo_checkpoint(weights_pth: Path) -> Yolov7Model:
@@ -187,12 +107,12 @@ def create_yolo(num_channels: int = 3, pretrained: bool = True) -> Yolov7Model:
     return model
 
 
-def inference(
+def yolo_inference(
     model: Yolov7Model,
     sample: Tensor,
-    conf_thresh: float = 0.8,
-    iou_thresh: float = 0.5
-):
+    conf_thresh: float = 0.6,
+    iou_thresh: float = 0.2
+) -> Tuple[FloatTensor, FloatTensor, FloatTensor]:
     """Произвести вывод модели.
 
     Parameters
@@ -200,16 +120,18 @@ def inference(
     model : Yolov7Model
         Загруженная модель.
     sample : Tensor
-        Тензор размером 
+        Тензор размером `(b, c, h, w)`.
     conf_thresh : float, optional
-        _description_, by default 0.8
+        A model's confidence threshold, by default 0.6.
     iou_thresh : float, optional
-        _description_, by default 0.5
+        A model's IoU threshold, by default 0.2.
 
     Returns
     -------
-    _type_
-        _description_
+    Tuple[FloatTensor, FloatTensor, FloatTensor]
+        Bounding boxes with shape `(n_boxes, 4)`,
+        predicted classes with shape `(n_boxes,)`
+        and predicted confidences with shape `(n_boxes,)`.
     """
     model.eval()
     with torch.no_grad():
@@ -226,64 +148,19 @@ def inference(
     return boxes, class_ids, confidences
 
 
-def draw_bboxes_cv2(
-    image: NDArray, bboxes: List[Tuple], class_labels: List[Any] = None,
-    confidences: List = None, bbox_format: str = 'xyxy'
-) -> NDArray:
-    """Нарисовать рамки предсказанным объектам с помощью cv2
-
-    Parameters
-    ----------
-    image : NDArray
-        Исходное изображение.
-    bboxes : List[Tuple]
-        Рамки в виде списка кортежей по 4 элемента для xyxy.
-    class_labels : List, optional
-        Метки для рамок, by default None
-    confidences : List, optional
-        Уверенность для рамок, by default None
-    bbox_format : str, optional
-        Формат рамок (доступен только xyxy), by default 'xyxy'
-
-    Returns
-    -------
-    NDArray
-        Изображение с нарисованными рамками.
-
-    Raises
-    ------
-    NotImplementedError
-        Доступно только для xyxy.
-    """    
-    image = image.copy()
-    if bbox_format != 'xyxy':
-        raise NotImplementedError('Доступно только для xyxy.')
-    
-    for i, bbox in enumerate(bboxes):
-        bbox = list(map(int, bbox))
-        x1, y1, x2, y2 = bbox
-        cv2.rectangle(image, (x1, y1), (x2, y2), color=(255, 255, 255), thickness=1)
-        if class_labels is not None:
-            put_text = f'cls: {class_labels[i]} '
-        else:
-            put_text = ''
-        if confidences is not None:
-            put_text += 'conf: {:.2f}'.format(confidences[i])
-        if put_text != '':
-            cv2.putText(image, put_text, (x1, y1 - 2), 0, 0.3, (255, 255, 255), 1)
-    
-    return image
-
-
 coco_labels = [
-    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
-    'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
-    'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
-    'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard',
-    'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
-    'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
-    'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone',
-    'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
+    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train',
+    'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign',
+    'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
+    'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag',
+    'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite',
+    'baseball bat', 'baseball glove', 'skateboard', 'surfboard',
+    'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon',
+    'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
+    'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant',
+    'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote',
+    'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',
+    'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
     'hair drier', 'toothbrush']
 
 label2idx = {label: i for i, label in enumerate(coco_labels)}
