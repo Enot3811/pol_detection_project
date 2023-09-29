@@ -76,6 +76,7 @@ def main(
         model = load_yolo_checkpoint(weights)
     else:
         num_ch = 4 if polarized else 3
+        num_ch = 3  # нет весов для 4-х каналов
         model = create_yolo(num_ch, pretrained)
 
     # Обработка семплов
@@ -88,6 +89,7 @@ def main(
         if polarized:
             raw_pol = np.load(sample_pth)
             image = split_raw_pol(raw_pol)  # ndarray (h, w, 4)
+            image = image[..., :3]
         else:
             image = read_image(sample_pth)  # ndarray (h, w, 3)
 
@@ -108,6 +110,7 @@ def main(
         bbox_img = draw_bounding_boxes(
             image, bboxes, class_labels=classes, confidences=confs)
         
+        print(sample_pth.name)
         cv2.imshow('Yolo inference (press any key)',
                    cv2.cvtColor(bbox_img, cv2.COLOR_RGB2BGR))
         key = cv2.waitKey(0)
@@ -143,11 +146,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--show_time',
                         help='Показывать время выполнения.',
                         action='store_true')
-    args = parser.parse_args([
-        'data/camera/2023_09_22/backpack/125lux/rgb',
-        '--pretrained',
-        '--conf_thresh', '0.25'
-    ])
+    args = parser.parse_args()
     return args
 
 
