@@ -34,11 +34,11 @@ def draw_bounding_boxes(
     image: NDArray,
     bboxes: List[List[Union[float, int]]],
     class_labels: List[Union[str, int, float]] = None,
-    exclude_classes: List[Union[str, int, float]] = None,
     confidences: List[float] = None,
     bbox_format: str = 'xyxy',
     line_width: int = 1,
-    color: Tuple[int, int, int] = (255, 255, 255)
+    color: Tuple[int, int, int] = (255, 255, 255),
+    exclude_classes: List[Union[str, int, float]] = None
 ) -> NDArray:
     """Draw bounding boxes and corresponding labels on a given image.
 

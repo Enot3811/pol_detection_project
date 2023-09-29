@@ -106,7 +106,7 @@ def main(
         classes = list(map(lambda idx: idx2label[idx],
                            class_ids[:30]))
         bbox_img = draw_bounding_boxes(
-            image, bboxes[:30], classes, confs[:30])
+            image, bboxes[:30], class_labels=classes, confidences=confs[:30])
         
         cv2.imshow('Yolo inference (press any key)',
                    cv2.cvtColor(bbox_img, cv2.COLOR_RGB2BGR))
