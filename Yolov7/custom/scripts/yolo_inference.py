@@ -99,14 +99,14 @@ def main(
         boxes, class_ids, confidences = yolo_inference(
             model, tensor_image, conf_thresh, iou_thresh)
 
-        bboxes = boxes.tolist()
-        class_ids = class_ids.tolist()
-        confs = confidences.tolist()
+        bboxes = boxes.tolist()[:30]
+        class_ids = class_ids.tolist()[:30]
+        confs = confidences.tolist()[:30]
 
         classes = list(map(lambda idx: idx2label[idx],
-                           class_ids[:30]))
+                           class_ids))
         bbox_img = draw_bounding_boxes(
-            image, bboxes[:30], class_labels=classes, confidences=confs[:30])
+            image, bboxes, class_labels=classes, confidences=confs)
         
         cv2.imshow('Yolo inference (press any key)',
                    cv2.cvtColor(bbox_img, cv2.COLOR_RGB2BGR))
