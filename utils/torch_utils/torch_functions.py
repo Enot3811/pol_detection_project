@@ -34,7 +34,7 @@ def draw_bounding_boxes(
     image: NDArray,
     bboxes: List[List[Union[float, int]]],
     class_labels: List[Union[str, int, float]] = None,
-    exclude_classes: List[str, int, float] = (),
+    exclude_classes: List[Union[str, int, float]] = None,
     confidences: List[float] = None,
     bbox_format: str = 'xyxy',
     line_width: int = 1,
@@ -51,7 +51,7 @@ def draw_bounding_boxes(
     class_labels : List, optional
         Bounding boxes' labels. By default is None.
     exclude_classes : List[str, int, float]
-        Classes which bounding boxes won't be showed. By default is ().
+        Classes which bounding boxes won't be showed. By default is None.
     confidences : List, optional
         Bounding boxes' confidences. By default is None.
     bbox_format : str, optional
@@ -74,6 +74,8 @@ def draw_bounding_boxes(
         bounding boxes formats.
     """
     image = image.copy()
+    if exclude_classes is None:
+        exclude_classes = []
 
     # Convert to "xyxy"
     if bbox_format != 'xyxy':
