@@ -51,7 +51,7 @@ class ObjectDetectionDataset(Dataset):
 
     def __getitem__(
         self, idx: int
-    ) -> Tuple[NDArray, NDArray, NDArray, str, Tuple[int, int]]:
+    ) -> Tuple[NDArray, List[List[float]], List[float], str, Tuple[int, int]]:
         """Return a sample by its index.
 
         Parameters
@@ -61,7 +61,7 @@ class ObjectDetectionDataset(Dataset):
 
         Returns
         -------
-        Tuple[NDArray, NDArray, NDArray, str, Tuple[int, int]]
+        Tuple[NDArray, List[List[float]], List[float], str, Tuple[int, int]]
             By default sample is a tuple that contains
             an image ndarray with shape `(h, w, c)`,
             a bounding boxes float list with shape `(n_obj, 4)`,
