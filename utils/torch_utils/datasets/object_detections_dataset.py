@@ -17,7 +17,7 @@ class ObjectDetectionDataset(Dataset):
     def __init__(
         self,
         cvat_dset_dir: Union[str, Path],
-        name2index: Dict[str, int] = None,
+        class_to_index: Dict[str, int] = None,
         transforms: Callable = None
     ):
         """Initialize object.
@@ -26,8 +26,8 @@ class ObjectDetectionDataset(Dataset):
         ----------
         cvat_dset_dir : Union[str, Path]
             A path to a cvat dataset directory.
-        name2index : Dict[str, int], optional
-            Name to index dict converter.
+        class_to_index : Dict[str, int], optional
+            Class name to class index converter.
             If not provided then will be generated automatically.
         transforms : Callable, optional
             Dataset transforms.
@@ -40,10 +40,11 @@ class ObjectDetectionDataset(Dataset):
         self.image_dir = cvat_dset_dir / 'images'
         self.cvat_dset = CvatObjectDetectionDataset(cvat_dset_dir)
         self.labels = self.cvat_dset.get_labels()
-        if name2index is None:
-            self.name2index = {label: i for i, label in enumerate(self.labels)}
+        if class_to_index is None:
+            self.class_to_index = {
+                label: i for i, label in enumerate(self.labels)}
         else:
-            self.name2index = name2index
+            self.class_to_index = class_to_index
         self.transforms = transforms
 
     def __len__(self):
@@ -74,7 +75,7 @@ class ObjectDetectionDataset(Dataset):
         classes = sample['labels']
         bboxes = sample['bboxes']
         shape = sample['shape']
-        classes = list(map(lambda label: float(self.name2index[label]),
+        classes = list(map(lambda label: float(self.class_to_index[label]),
                            classes))
         img_pth = self.image_dir / img_name
         image = read_image(img_pth)
