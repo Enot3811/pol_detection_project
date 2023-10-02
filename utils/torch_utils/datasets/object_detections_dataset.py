@@ -45,6 +45,8 @@ class ObjectDetectionDataset(Dataset):
                 label: i for i, label in enumerate(self.labels)}
         else:
             self.class_to_index = class_to_index
+        self.index_to_class = {
+            idx: name for name, idx in self.class_to_index.items()}
         self.transforms = transforms
 
     def __len__(self):
