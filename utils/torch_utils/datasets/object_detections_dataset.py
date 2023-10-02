@@ -47,7 +47,7 @@ class ObjectDetectionDataset(Dataset):
         self.transforms = transforms
 
     def __len__(self):
-        return len(len(self.cvat_dset))
+        return len(self.cvat_dset)
 
     def __getitem__(
         self, idx: int
