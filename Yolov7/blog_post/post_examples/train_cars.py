@@ -16,7 +16,7 @@ from pytorch_accelerated.schedulers import CosineLrScheduler
 from torch.utils.data import Dataset
 
 import sys
-sys.path.append(str(Path(__file__).parents[1]))
+sys.path.append(str(Path(__file__).parents[2]))
 
 from yolov7 import create_yolov7_model
 from yolov7.dataset import (
@@ -136,7 +136,6 @@ def main(
     num_epochs: int = 300,
     batch_size: int = 16,
 ):
-
     # load data
     data_path = Path(data_path)
     images_path = data_path / "training_images"
