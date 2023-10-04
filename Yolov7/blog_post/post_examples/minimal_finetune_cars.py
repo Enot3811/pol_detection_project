@@ -1,4 +1,4 @@
-import os
+import sys
 import random
 from functools import partial
 from pathlib import Path
@@ -16,11 +16,13 @@ from pytorch_accelerated.callbacks import (
 from pytorch_accelerated.schedulers import CosineLrScheduler
 from torch.utils.data import Dataset
 
-from yolov7 import create_yolov7_model
-from yolov7.dataset import Yolov7Dataset, create_yolov7_transforms, yolov7_collate_fn
-from yolov7.evaluation import CalculateMeanAveragePrecisionCallback
-from yolov7.loss_factory import create_yolov7_loss
-from yolov7.trainer import Yolov7Trainer, filter_eval_predictions
+sys.path.append(str(Path(__file__).parents[3]))
+from Yolov7.yolov7 import create_yolov7_model
+from Yolov7.yolov7.dataset import (
+    Yolov7Dataset, create_yolov7_transforms, yolov7_collate_fn)
+from Yolov7.yolov7.evaluation import CalculateMeanAveragePrecisionCallback
+from Yolov7.yolov7.loss_factory import create_yolov7_loss
+from Yolov7.yolov7.trainer import Yolov7Trainer, filter_eval_predictions
 
 
 def load_cars_df(annotations_file_path, images_path):
@@ -114,8 +116,7 @@ class CarsDatasetAdaptor(Dataset):
         return image, xyxy_bboxes, class_ids, image_id, image_hw
 
 
-# DATA_PATH = Path("/".join(Path(__file__).absolute().parts[:-2])) / "data/cars"
-DATA_PATH = Path(__file__).absolute().parents[2] / 'data/cars'
+DATA_PATH = Path(__file__).parents[3] / 'data' / 'yolo_old' / 'cars'
 
 
 @script

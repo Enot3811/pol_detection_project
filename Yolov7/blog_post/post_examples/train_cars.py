@@ -1,3 +1,4 @@
+import sys
 import random
 from functools import partial
 from pathlib import Path
@@ -15,9 +16,7 @@ from pytorch_accelerated.callbacks import (
 from pytorch_accelerated.schedulers import CosineLrScheduler
 from torch.utils.data import Dataset
 
-import sys
-sys.path.append(str(Path(__file__).parents[2]))
-
+sys.path.append(str(Path(__file__).parents[3]))
 from yolov7 import create_yolov7_model
 from yolov7.dataset import (
     Yolov7Dataset,
