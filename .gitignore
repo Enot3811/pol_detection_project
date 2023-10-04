@@ -4,6 +4,8 @@ data/*
 venv/*
 work_dir/*
 other/*
+*.txt
+*.csv
 
 # Pycache
 __pycache__*
