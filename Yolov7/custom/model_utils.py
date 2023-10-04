@@ -41,7 +41,7 @@ def intersect_dicts(da: Dict, db: Dict, exclude: Tuple = ()) -> Dict:
     }
 
 
-def load_yolo_checkpoint(weights_pth: Path) -> Yolov7Model:
+def load_yolo_checkpoint(weights_pth: Path, num_classes: int) -> Yolov7Model:
     """Create yolo model and load given weights.
 
     The loaded weights are checked to determine a number of channels
@@ -51,6 +51,8 @@ def load_yolo_checkpoint(weights_pth: Path) -> Yolov7Model:
     ----------
     weights : Path
         A path to pt file with model weights.
+    num_classes : int
+        A number of classes for predictions.
 
     Returns
     -------
@@ -63,7 +65,8 @@ def load_yolo_checkpoint(weights_pth: Path) -> Yolov7Model:
     
     # Create empty model
     model = create_yolov7_model(
-        'yolov7', pretrained=False, num_channels=num_channels)
+        'yolov7', num_classes=num_classes, pretrained=False,
+        num_channels=num_channels)
     # Load weights
     state_dict = intersect_dicts(
         state_dict,

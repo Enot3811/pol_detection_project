@@ -54,6 +54,13 @@ def main(
     show_time : bool
         Показывать время выполнения.
     """
+    # TODO как-то переделать это
+    cls_id_to_name = {
+        0: 'Tank'
+    }
+    num_classes = len(cls_id_to_name)
+    # cls_id_to_name = idx2label
+
     # Получить все пути
     if samples_pth.is_dir():
         # Поляризация
@@ -73,7 +80,7 @@ def main(
 
     # Загрузить модель
     if weights:
-        model = load_yolo_checkpoint(weights)
+        model = load_yolo_checkpoint(weights, num_classes)
     else:
         num_ch = 4 if polarized else 3
         num_ch = 3  # нет весов для 4-х каналов
@@ -105,7 +112,7 @@ def main(
         class_ids = class_ids.tolist()[:30]
         confs = confidences.tolist()[:30]
 
-        classes = list(map(lambda idx: idx2label[idx],
+        classes = list(map(lambda idx: cls_id_to_name[idx],
                            class_ids))
         bbox_img = draw_bounding_boxes(
             image, bboxes, class_labels=classes, confidences=confs)
