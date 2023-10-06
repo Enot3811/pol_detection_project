@@ -79,32 +79,8 @@ def load_tanks_df(annotations_file_path: Path, images_path: Path):
     return train_df, valid_df, lookups
 
 
-class MeanAveragePrecisionWithLogCallback(
-        CalculateMeanAveragePrecisionCallback):
-    """Вычисление maP с последующим логированием в tensorboard."""
-    pass
-
-
 class TankDsetAdapter(CarsDatasetAdaptor):
     pass
-
-
-# def write_csv_from_dataset():
-#     """Транслировать аннотации TankDetectionDataset в csv формат из блога."""
-#     dset = TankDetectionDataset('data/tank_2set_rgb')
-#     csv_frame = [['image', 'xmin', 'ymin', 'xmax', 'ymax']]
-#     for sample in dset:
-#         image, bboxes, classes, img_id, shape = sample
-#         img_name = dset.img_id_to_name[img_id]
-#         for i in range(bboxes.shape[0]):
-#             csv_frame.append(
-#                 [img_name, bboxes[i, 0], bboxes[i, 1],
-#                  bboxes[i, 2], bboxes[i, 3]])
-        
-#     with open('tank_2set.csv', 'w') as f:
-#         writer = csv.writer(f)
-#         for row in csv_frame:
-#             writer.writerow(row)
 
 
 def save_train_history(save_pth: Path, trainer: Yolov7Trainer):
