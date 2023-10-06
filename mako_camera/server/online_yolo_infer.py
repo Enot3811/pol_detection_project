@@ -70,7 +70,7 @@ def main(**kwargs):
             updated_paths = set(frames_dir.glob('*.npy'))
         else:
             updated_paths = []
-            for ext in ('jpg', 'JPG', 'png', 'PNG'):
+            for ext in ('jpg', 'JPG', 'png', 'PNG', 'npy'):
                 updated_paths += list(frames_dir.glob(f'*.{ext}'))
             updated_paths = set(updated_paths)
         # Отсеиваем старые для быстродействия
@@ -96,7 +96,12 @@ def main(**kwargs):
                 image = split_raw_pol(raw_pol)  # ndarray (h, w, 4)
                 image = image[..., :3]
             else:
-                image = read_image(pth)  # ndarray (h, w, 3)
+                # Raw rgb
+                if pth.name.split('.')[-1] == 'npy':
+                    bayer = np.load(pth)  # ndarray(h, w)
+                    image = cv2.cvtColor(bayer, cv2.COLOR_BAYER_RG2BGR)
+                else:
+                    image = read_image(pth)  # ndarray (h, w, 3)
 
             # Загрузка модели и предобработки
             if model is None:
