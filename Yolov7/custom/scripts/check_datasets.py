@@ -49,6 +49,8 @@ def main(**kwargs):
         apply_mosaic_probability=mosaic_prob,
         apply_mixup_probability=mixup_prob,
         post_mosaic_transforms=post_mosaic_transforms)
+    if not training:
+        mosaic_mixup_dset.disable()
     
     yolo_dset = Yolov7Dataset(mosaic_mixup_dset, yolo_transforms)
 
