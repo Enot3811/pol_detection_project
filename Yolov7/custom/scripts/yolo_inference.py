@@ -84,7 +84,7 @@ def main(
     else:
         num_ch = 4 if polarized else 3
         num_ch = 3  # нет весов для 4-х каналов
-        model = create_yolo(num_ch, pretrained)
+        model = create_yolo(num_classes, num_ch, pretrained)
 
     # Обработка семплов
     process_transforms = create_yolov7_transforms()

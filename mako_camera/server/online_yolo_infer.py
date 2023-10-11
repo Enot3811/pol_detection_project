@@ -110,7 +110,7 @@ def main(**kwargs):
                 else:
                     num_ch = 4 if polarized else 3
                     num_ch = 3  # нет весов для 4-х каналов
-                    model = create_yolo(num_ch, pretrained)
+                    model = create_yolo(num_classes, num_ch, pretrained)
                 process_transforms = create_yolov7_transforms()
                 normalize_transforms = A.Compose(
                     # [A.Normalize(), ToTensorV2(transpose_mask=True)])
@@ -175,10 +175,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--show_time',
                         help='Показывать время выполнения.',
                         action='store_true')
-    args = parser.parse_args([
-        'test',
-        '--weights', 'Yolov7/work_dir/train_1/ckpts/best_model.pt'
-    ])
+    args = parser.parse_args()
     return args
 
 
