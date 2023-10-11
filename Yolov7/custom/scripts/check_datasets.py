@@ -10,10 +10,11 @@ import argparse
 
 from torchvision.ops import box_convert
 import cv2
+import albumentations as A
 
 sys.path.append(str(Path(__file__).parents[3]))
 from Yolov7.yolov7.dataset import (
-    Yolov7Dataset, create_base_transforms, create_yolov7_transforms)
+    Yolov7Dataset, create_yolov7_transforms)
 from Yolov7.yolov7.mosaic import (
     MosaicMixupDataset, create_post_mosaic_transform)
 from Yolov7.custom.datasets import TankDetectionDataset
@@ -33,15 +34,18 @@ def main(**kwargs):
     training = dset_type == 'train'
     
     # Get transforms
-    base_transforms = create_base_transforms(input_size)
     post_mosaic_transforms = create_post_mosaic_transform(
         input_size, input_size)
+    resize_to_show = A.Compose(
+        [A.LongestMaxSize(input_size)],
+        bbox_params=A.BboxParams(format='pascal_voc',
+                                 label_fields=['classes']))
     # post_mosaic_transforms = None
     yolo_transforms = create_yolov7_transforms(
         (input_size, input_size), training)
 
     # Get dataset
-    obj_dset = TankDetectionDataset(dset_dir, transforms=base_transforms)
+    obj_dset = TankDetectionDataset(dset_dir)
     index_to_cls = obj_dset.index_to_class
 
     mosaic_mixup_dset = MosaicMixupDataset(
@@ -80,10 +84,19 @@ def main(**kwargs):
         str_mos_cls = list(map(lambda idx: index_to_cls[idx], mos_cls))
         str_ls_yolo_cls = list(map(lambda idx: index_to_cls[idx], ls_yolo_cls))
 
+        resized = resize_to_show(
+            image=orig_img, bboxes=orig_bboxes, classes=orig_cls)
+        orig_img = resized['image']
+        orig_bboxes = resized['bboxes']
+        resized = resize_to_show(
+            image=mos_img, bboxes=mos_bboxes, classes=mos_cls)
+        mos_img = resized['image']
+        mos_bboxes = resized['bboxes']
+
         orig_img_bboxes = draw_bounding_boxes(
-            orig_img, orig_bboxes, str_orig_cls)
+            orig_img, orig_bboxes, str_orig_cls, line_width=1)
         mos_img_bboxes = draw_bounding_boxes(
-            mos_img, mos_bboxes, str_mos_cls)
+            mos_img, mos_bboxes, str_mos_cls, line_width=1)
         yolo_img_bboxes = draw_bounding_boxes(
             np_yolo_img, ls_yolo_bboxes, str_ls_yolo_cls)
 
@@ -116,9 +129,7 @@ def parse_args() -> argparse.Namespace:
         '--dset_type', type=str, default='train', choices=['train', 'val'],
         help='Для "train" применяются аугментации, а для "val" нет.')
 
-    args = parser.parse_args([
-        'data/debug_dset/train'
-    ])
+    args = parser.parse_args()
     return args
 
 
