@@ -1,184 +1,295 @@
 """Скрипт для обучения yolov7."""
-# TODO дописать
+
 
 import sys
-from functools import partial
 from pathlib import Path
+import json
 import argparse
 
 import torch
-from pytorch_accelerated.callbacks import (
-    ModelEmaCallback,
-    ProgressBarCallback,
-    SaveBestModelCallback,
-    get_default_callbacks)
-from pytorch_accelerated.schedulers import CosineLrScheduler
-import cv2
+import torch.optim as optim
+from torch import FloatTensor
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
+from torchmetrics import Metric
+from torchmetrics.detection import MeanAveragePrecision
+from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).parents[3]))
-from Yolov7.yolov7 import create_yolov7_model
 from Yolov7.yolov7.dataset import (
-    Yolov7Dataset, create_base_transforms, create_yolov7_transforms,
-    yolov7_collate_fn)
-from Yolov7.yolov7.evaluation import CalculateMeanAveragePrecisionCallback
+    Yolov7Dataset, create_yolov7_transforms, yolov7_collate_fn)
 from Yolov7.yolov7.loss_factory import create_yolov7_loss
 from Yolov7.yolov7.mosaic import (
     MosaicMixupDataset, create_post_mosaic_transform)
-from Yolov7.yolov7.trainer import Yolov7Trainer, filter_eval_predictions
-from Yolov7.yolov7.utils import SaveBatchesCallback, Yolov7ModelEma
-
-
+from Yolov7.yolov7.trainer import filter_eval_predictions
 from Yolov7.custom.datasets import TankDetectionDataset
-from utils.torch_utils.torch_functions import draw_bounding_boxes
-from utils.image_utils.image_functions import read_image, resize_image
+from Yolov7.custom.model_utils import create_yolo
 
 
-DATA_PATH = Path(__file__).absolute().parents[2] / 'data/polarized_dataset'
+class YoloLossMetric(Metric):
+    def __init__(self):
+        super().__init__()
+        self.add_state('loss',
+                       default=torch.tensor(0, dtype=torch.float64),
+                       dist_reduce_fx='sum')
+        self.add_state('n_total',
+                       default=torch.tensor(0, dtype=torch.float64),
+                       dist_reduce_fx='sum')
+
+    def update(self, batch_loss: FloatTensor):
+        self.loss += batch_loss
+        self.n_total += 1
+
+    def compute(self):
+        return self.loss / self.n_total
 
 
 def main(**kwargs):
-    # Parse args
-    dset_dir = kwargs['dset_dir']
-    continue_training = kwargs['continue_training']
-    device = kwargs['device']
-
-    # Get dataset parameters
-    train_dir = dset_dir / 'train'
-    val_dir = dset_dir / 'val'
-    name2index = {'Tank': 0}
-    index2name = {0: 'Tank'}
-    input_size = 640
-    mosaic_prob = 1.0
-    mixup_prob = 0.15
-
-    # Get model parameters
-    model_arch = 'yolov7'
-    conf_thresh = 0.8
-    iou_thresh = 0.2
-    pretrained = False  # TODO сделать fine tunning
-
-    # Get training parameters
-    lr = 0.01
-    batch_size = 16
-    base_weight_decay = 0.0005
-    num_epochs = 20
+    # Read config
+    config_pth = kwargs['config_pth']
+    with open(config_pth, 'r') as f:
+        config_str = f.read()
+    config = json.loads(config_str)
 
     # Prepare some stuff
-    if device == 'auto':
+    torch.manual_seed(config['random_seed'])
+
+    if config['device'] == 'auto':
         device: torch.device = (
             torch.device('cuda') if torch.cuda.is_available()
             else torch.device('cpu'))
     else:
-        device: torch.device = torch.device(device)
-    work_dir = Path(__file__).parents[2] / 'work_dir' / 'train_1'
-    work_dir.mkdir(parents=True, exist_ok=True)
-    if continue_training:
-        checkpoint = torch.load(work_dir / 'last_checkpoint.pt')
+        device: torch.device = torch.device(config['device'])
+    cpu_device = torch.device('cpu')
+    
+    work_dir = Path(config['work_dir'])
+    tensorboard_dir = work_dir / 'tensorboard'
+    ckpt_dir = work_dir / 'ckpts'
+    if not config['continue_training']:
+        tensorboard_dir.mkdir(parents=True, exist_ok=True)
+        ckpt_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check and load checkpoint
+    if config['continue_training']:
+        checkpoint = torch.load(ckpt_dir / 'last_checkpoint.pth')
         model_params = checkpoint['model']
         optim_params = checkpoint['optimizer']
-        start_ep = checkpoint['epoch'] + 1
+        lr_params = checkpoint['lr_scheduler']
+        start_ep = checkpoint['epoch']
     else:
         model_params = None
         optim_params = None
+        lr_params = None
         start_ep = 0
+
+    # Get tensorboard
+    log_writer = SummaryWriter(str(tensorboard_dir))
     
     # Get transforms
-    base_transforms = create_base_transforms(input_size)
     post_mosaic_transforms = create_post_mosaic_transform(
-        input_size, input_size)
+        config['input_size'], config['input_size'])
     yolo_train_transforms = create_yolov7_transforms(
-        (input_size, input_size), training=True)
+        (config['input_size'], config['input_size']), training=True)
     yolo_val_transforms = create_yolov7_transforms(
-        (input_size, input_size), training=False)
+        (config['input_size'], config['input_size']), training=False)
 
-    # Get dataset
+    # Get datasets and loaders
+    train_dir = Path(config['dataset']) / 'train'
+    val_dir = Path(config['dataset']) / 'val'
+
     train_dset = TankDetectionDataset(
-        train_dir, name2index=name2index, transforms=base_transforms)
-    val_dset = TankDetectionDataset(val_dir, name2index=name2index)
-
-    num_classes = len(train_dset.labels)
+        train_dir, name2index=config['cls_to_id'])
+    val_dset = TankDetectionDataset(
+        val_dir, name2index=config['cls_to_id'])
+    num_classes = len(config['cls_to_id'])
 
     mosaic_mixup_dset = MosaicMixupDataset(
         train_dset,
-        apply_mosaic_probability=mosaic_prob,
-        apply_mixup_probability=mixup_prob,
+        apply_mosaic_probability=config['mosaic_prob'],
+        apply_mixup_probability=config['mixup_prob'],
         post_mosaic_transforms=post_mosaic_transforms)
     
-    # if pretrained:
-    #     # disable mosaic if finetuning
-    #     mds.disable()
+    if config['pretrained']:
+        # disable mosaic if finetuning
+        mosaic_mixup_dset.disable()
     
     train_yolo_dset = Yolov7Dataset(mosaic_mixup_dset, yolo_train_transforms)
     val_yolo_dset = Yolov7Dataset(val_dset, yolo_val_transforms)
 
-    # Get the model, loss amd optimizer
-    model = create_yolov7_model(
-        architecture=model_arch,
-        num_classes=num_classes,
-        pretrained=pretrained)
-    param_groups = model.get_parameter_groups()
+    train_loader = DataLoader(train_yolo_dset,
+                              batch_size=config['batch_size'],
+                              shuffle=config['shuffle_train'],
+                              collate_fn=yolov7_collate_fn)
+    val_loader = DataLoader(val_yolo_dset,
+                            batch_size=config['batch_size'],
+                            shuffle=config['shuffle_val'],
+                            collate_fn=yolov7_collate_fn)
 
-    loss_func = create_yolov7_loss(model, image_size=input_size)
+    # Get the model and loss
+    model = create_yolo(num_classes=num_classes,
+                        pretrained=config['pretrained'])
+    model.to(device=device)
+    if model_params:
+        model.load_state_dict(model_params)
 
-    optimizer = torch.optim.SGD(
-        param_groups["other_params"], lr=lr, momentum=0.937, nesterov=True)
+    loss_func = create_yolov7_loss(model, image_size=config['input_size'])
+    loss_func.to(device=device)
+
+    # Get an optimizer and scheduler
+    optimizer = optim.Adam(model.parameters(),
+                           lr=config['lr'],
+                           weight_decay=config['weight_decay'])
+    if optim_params:
+        optimizer.load_state_dict(optim_params)
+
+    lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=config['n_epoch'], eta_min=1e-6,
+        last_epoch=start_ep - 1)
+    if lr_params:
+        lr_scheduler.load_state_dict(lr_params)
     
-    # Get the trainer
-    trainer = Yolov7Trainer(
-        model=model,
-        optimizer=optimizer,
-        loss_func=loss_func,
-        filter_eval_predictions_fn=partial(
-            filter_eval_predictions,
-            confidence_threshold=conf_thresh,
-            nms_threshold=iou_thresh),
-        callbacks=[
-            ModelEmaCallback(
-                decay=0.9999,
-                model_ema=Yolov7ModelEma,
-                callbacks=[ProgressBarCallback, calculate_map_callback],
-            ),
-            SaveBestModelCallback(save_path='cars_3ch_best.pt',
-                                  watch_metric="map",
-                                  greater_is_better=True),
-            SaveBatchesCallback("./batches", num_images_per_batch=3),
-            *get_default_callbacks(progress_bar=True),
-        ],
-    )
+    # Get metrics
+    # train_map_metric = MeanAveragePrecision(extended_summary=False)
+    val_map_metric = MeanAveragePrecision(extended_summary=False)
+    train_loss_metric = YoloLossMetric()
+    val_loss_metric = YoloLossMetric()
+    # train_map_metric.to(device=device)
+    val_map_metric.to(device=device)
+    train_loss_metric.to(device=device)
+    val_loss_metric.to(device=device)
 
+    # Do training
+    best_metric = 0.0
+    for epoch in range(start_ep, config['n_epoch']):
 
-    # # calculate scaled weight decay and gradient accumulation steps
-    # total_batch_size = (
-    #     batch_size * trainer._accelerator.num_processes
-    # )  # batch size across all processes
+        print(f'Epoch {epoch + 1}')
 
-    # nominal_batch_size = 64
-    # num_accumulate_steps = max(round(nominal_batch_size / total_batch_size), 1)
-    # base_weight_decay = 0.0005
-    # scaled_weight_decay = (
-    #     base_weight_decay * total_batch_size * num_accumulate_steps /
-    #     nominal_batch_size
-    # )
+        # Train epoch
+        model.train()
+        loss_func.train()
+        for batch in tqdm(train_loader, 'Train step'):
+            images, labels, img_names, img_sizes = batch
+            images = images.to(device=device)
+            labels = labels.to(device=device)
+            fpn_heads_outputs = model(images)
+            loss, _ = loss_func(
+                fpn_heads_outputs=fpn_heads_outputs,
+                targets=labels, images=images)
+            loss = loss[0]
 
-    # optimizer.add_param_group(
-    #     {"params": param_groups["conv_weights"],
-    #      "weight_decay": scaled_weight_decay}
-    # )
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            train_loss_metric.update(loss)
+        
+        # Val epoch
+        with torch.no_grad():
+            model.eval()
+            loss_func.eval()
+            for batch in tqdm(val_loader, 'Val step'):
+                images, labels, img_names, img_sizes = batch
+                images = images.to(device=device)
+                labels = labels.to(device=device)
+                fpn_heads_outputs = model(images)
+                loss, _ = loss_func(
+                    fpn_heads_outputs=fpn_heads_outputs,
+                    targets=labels, images=images)
+                loss = loss[0]
+                val_loss_metric.update(loss)
+                
+                preds = model.postprocess(
+                    fpn_heads_outputs, multiple_labels_per_box=False)
 
-    # # run training
-    # trainer.train(
-    #     num_epochs=num_epochs,
-    #     train_dataset=train_yds,
-    #     eval_dataset=eval_yds,
-    #     per_device_batch_size=batch_size,
-    #     create_scheduler_fn=CosineLrScheduler.create_scheduler_fn(
-    #         num_warmup_epochs=5,
-    #         num_cooldown_epochs=5,
-    #         k_decay=2,
-    #     ),
-    #     collate_fn=yolov7_collate_fn,
-    #     gradient_accumulation_steps=num_accumulate_steps,
-    # )
+                nms_predictions = filter_eval_predictions(
+                    preds,
+                    confidence_threshold=config['conf_thresh'],
+                    nms_threshold=config['iou_thresh'])
+
+                map_preds = [
+                    {'boxes': image_preds[:, :4],
+                     'labels': image_preds[:, -1].long(),
+                     'scores': image_preds[:, -2]}
+                    for image_preds in nms_predictions]
+
+                map_targets = []
+                for i in range(images.shape[0]):
+                    img_labels = labels[labels[:, 0] == i]
+                    img_boxes = img_labels[:, 2:] * images.shape[2]
+                    img_classes = img_labels[:, 1].long()
+                    map_targets.append({
+                        'boxes': img_boxes,
+                        'labels': img_classes
+                    })
+                    
+                val_map_metric.update(map_preds, map_targets)
+
+        # Lr scheduler
+        lr_scheduler.step()
+        lr = lr_scheduler.get_last_lr()[0]
+
+        # Log epoch metrics
+        train_loss = train_loss_metric.compute()
+        train_loss_metric.reset()
+        log_writer.add_scalar('loss/train', train_loss, epoch)
+        val_loss = val_loss_metric.compute()
+        val_loss_metric.reset()
+        log_writer.add_scalar('loss/val', val_loss, epoch)
+        
+        # train_map_dict = train_map_metric.compute()
+        # train_map_metric.reset()
+        # log_writer.add_scalar('map/val',
+        #                       train_map_dict['map'].to(device=cpu_device),
+        #                       epoch)
+        # log_writer.add_scalar(
+        #     'map_small/val',
+        #     train_map_dict['map_small'].to(device=cpu_device),
+        #     epoch)
+        # log_writer.add_scalar(
+        #     'map_medium/val',
+        #     train_map_dict['map_medium'].to(device=cpu_device),
+        #     epoch)
+        # log_writer.add_scalar(
+        #     'map_large/val',
+        #     train_map_dict['map_large'].to(device=cpu_device),
+        #     epoch)
+
+        val_map_dict = val_map_metric.compute()
+        val_map_metric.reset()
+        log_writer.add_scalar(
+            'map_small/val',
+            val_map_dict['map_small'].to(device=cpu_device),
+            epoch)
+        log_writer.add_scalar(
+            'map_medium/val',
+            val_map_dict['map_medium'].to(device=cpu_device),
+            epoch)
+        log_writer.add_scalar(
+            'map_large/val',
+            val_map_dict['map_large'].to(device=cpu_device),
+            epoch)
+
+        log_writer.add_scalar('Lr', lr, epoch)
+
+        print('TrainLoss:', train_loss.item())
+        print('ValLoss:', val_loss.item())
+        # print('TrainMap:', train_map_dict['map'].item())
+        print('ValMap:', val_map_dict['map'].item())
+        print('Lr:', lr)
+
+        # Save model
+        if best_metric < val_map_dict['map'].item():
+            torch.save(
+                model.state_dict(), ckpt_dir / 'best_model.pt')
+        torch.save(
+            {
+                'model': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'lr_scheduler': lr_scheduler.state_dict(),
+                'epoch': epoch + 1
+            },
+            ckpt_dir / 'last_checkpoint.pth')
+
+    log_writer.close()
 
 
 def parse_args() -> argparse.Namespace:
@@ -189,45 +300,13 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        'dset_dir', type=Path,
-        help='Путь к директории с датасетом. '
-        'Подразумевается директория с 3 подкаталогами "train", "val" и "test",'
-        ' в каждом из которых находится датасет в формате CVAT.')
-    parser.add_argument(
-        '--continue_training', action='store_true',
-        help='Продолжить ли обучение с последнего чекпоинта '
-        '"last_checkpoint.pt" в "work_dir/train_n".')
-    # parser.add_argument(
-    #     '--pretrained', action='store_true',
-    #     help='Загрузить ли официальные предобученные веса. '
-    #     'Игнорируется, если указан аргумент "--weights".')
-    # parser.add_argument(
-    #     '--polarized', action='store_true',
-    #     help='Поляризационная ли съёмка. Если не указан, то RGB.')
-    # parser.add_argument(
-    #     '--conf_thresh', type=float, default=0.6,
-    #     help='Порог уверенности модели.')
-    # parser.add_argument(
-    #     '--iou_thresh', type=float, default=0.2,
-    #     help='Порог перекрытия рамок.')
-    # parser.add_argument(
-    #     '--show_time', action='store_true',
-    #     help='Показывать время выполнения.')
-    
-    parser.add_argument(
-        '--device', type=str, default='auto', choices=['cpu', 'cuda', 'auto'],
-        help='The device on which calculations are performed. '
-        '"auto" selects "cuda" when it is possible.')
-    args = parser.parse_args([
-        'data/debug_dset/',
-        '--device', 'cpu'
-    ])
+        'config_pth', type=Path,
+        help='Путь к конфигу обучения.')
+    args = parser.parse_args()
     return args
 
 
 if __name__ == "__main__":
     args = parse_args()
-    dset_dir = args.dset_dir
-    continue_training = args.continue_training
-    device = args.device
-    main(dset_dir=dset_dir, continue_training=continue_training, device=device)
+    config_pth = args.config_pth
+    main(config_pth=config_pth)
