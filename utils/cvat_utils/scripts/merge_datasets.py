@@ -88,10 +88,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         'save_dir', type=Path,
         help='A path to save the merged CVAT dataset.')
-    args = parser.parse_args([
-        'data/tank_1set_rgb',
-        'data/tank_2set_rgb',
-        'data/union_tank_dataset'])
+    args = parser.parse_args()
     return args
 
 
