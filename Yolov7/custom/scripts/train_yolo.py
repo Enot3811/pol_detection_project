@@ -5,12 +5,14 @@ import sys
 from pathlib import Path
 import json
 import argparse
+from math import ceil
 
 import torch
 import torch.optim as optim
 from torch import FloatTensor
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from torchvision.ops import box_convert
 from torchmetrics import Metric
 from torchmetrics.detection import MeanAveragePrecision
 from tqdm import tqdm
@@ -69,12 +71,15 @@ def main(**kwargs):
         tensorboard_dir.mkdir(parents=True, exist_ok=True)
         ckpt_dir.mkdir(parents=True, exist_ok=True)
 
+    n_accumulate_steps = ceil(
+        config['nominal_batch_size'] / config['batch_size'])
+
     # Check and load checkpoint
     if config['continue_training']:
         checkpoint = torch.load(ckpt_dir / 'last_checkpoint.pth')
-        model_params = checkpoint['model']
-        optim_params = checkpoint['optimizer']
-        lr_params = checkpoint['lr_scheduler']
+        model_params = checkpoint['model_state_dict']
+        optim_params = checkpoint['optimizer_state_dict']
+        lr_params = checkpoint['scheduler_state_dict']
         start_ep = checkpoint['epoch']
     else:
         model_params = None
@@ -135,13 +140,23 @@ def main(**kwargs):
     loss_func = create_yolov7_loss(model, image_size=config['input_size'])
     loss_func.to(device=device)
 
-    # Get an optimizer and scheduler
-    optimizer = optim.Adam(model.parameters(),
-                           lr=config['lr'],
-                           weight_decay=config['weight_decay'])
+    # Get the optimizer
+    param_groups = model.get_parameter_groups()
+    optimizer = optim.SGD(param_groups['other_params'],
+                          lr=config['lr'],
+                          momentum=0.937,
+                          nesterov=True)
+    optimizer.add_param_group({'params': param_groups['conv_weights'],
+                               'weight_decay': config['weight_decay']})
+    # optimizer = optim.Adam(model.parameters(),
+    #                        lr=config['lr'],
+    #                        weight_decay=config['weight_decay'])
     if optim_params:
         optimizer.load_state_dict(optim_params)
 
+    # Get the scheduler
+    # n_scheduler_steps = ceil(
+    #     len(train_loader) / n_accumulate_steps) * config['n_epoch']
     lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=config['n_epoch'], eta_min=1e-6,
         last_epoch=start_ep - 1)
@@ -149,17 +164,15 @@ def main(**kwargs):
         lr_scheduler.load_state_dict(lr_params)
     
     # Get metrics
-    # train_map_metric = MeanAveragePrecision(extended_summary=False)
     val_map_metric = MeanAveragePrecision(extended_summary=False)
     train_loss_metric = YoloLossMetric()
     val_loss_metric = YoloLossMetric()
-    # train_map_metric.to(device=device)
     val_map_metric.to(device=device)
     train_loss_metric.to(device=device)
     val_loss_metric.to(device=device)
 
     # Do training
-    best_metric = 0.0
+    best_metric = None
     for epoch in range(start_ep, config['n_epoch']):
 
         print(f'Epoch {epoch + 1}')
@@ -167,6 +180,7 @@ def main(**kwargs):
         # Train epoch
         model.train()
         loss_func.train()
+        step = 0
         for batch in tqdm(train_loader, 'Train step'):
             images, labels, img_names, img_sizes = batch
             images = images.to(device=device)
@@ -175,12 +189,18 @@ def main(**kwargs):
             loss, _ = loss_func(
                 fpn_heads_outputs=fpn_heads_outputs,
                 targets=labels, images=images)
-            loss = loss[0]
-
-            optimizer.zero_grad()
+            loss = loss[0] / n_accumulate_steps
             loss.backward()
-            optimizer.step()
+            
+            perform_gradient_update = (
+                (step + 1) % n_accumulate_steps == 0
+            ) or (step + 1 == len(train_loader))
+            if perform_gradient_update:
+                optimizer.step()
+                optimizer.zero_grad()
+            
             train_loss_metric.update(loss)
+            step += 1
         
         # Val epoch
         with torch.no_grad():
@@ -206,7 +226,8 @@ def main(**kwargs):
                     nms_threshold=config['iou_thresh'])
 
                 map_preds = [
-                    {'boxes': image_preds[:, :4],
+                    {'boxes': box_convert(
+                        image_preds[:, :4], 'cxcywh', 'xyxy'),
                      'labels': image_preds[:, -1].long(),
                      'scores': image_preds[:, -2]}
                     for image_preds in nms_predictions]
@@ -215,6 +236,7 @@ def main(**kwargs):
                 for i in range(images.shape[0]):
                     img_labels = labels[labels[:, 0] == i]
                     img_boxes = img_labels[:, 2:] * images.shape[2]
+                    img_boxes = box_convert(img_boxes, 'cxcywh', 'xyxy')
                     img_classes = img_labels[:, 1].long()
                     map_targets.append({
                         'boxes': img_boxes,
@@ -234,27 +256,13 @@ def main(**kwargs):
         val_loss = val_loss_metric.compute()
         val_loss_metric.reset()
         log_writer.add_scalar('loss/val', val_loss, epoch)
-        
-        # train_map_dict = train_map_metric.compute()
-        # train_map_metric.reset()
-        # log_writer.add_scalar('map/val',
-        #                       train_map_dict['map'].to(device=cpu_device),
-        #                       epoch)
-        # log_writer.add_scalar(
-        #     'map_small/val',
-        #     train_map_dict['map_small'].to(device=cpu_device),
-        #     epoch)
-        # log_writer.add_scalar(
-        #     'map_medium/val',
-        #     train_map_dict['map_medium'].to(device=cpu_device),
-        #     epoch)
-        # log_writer.add_scalar(
-        #     'map_large/val',
-        #     train_map_dict['map_large'].to(device=cpu_device),
-        #     epoch)
 
         val_map_dict = val_map_metric.compute()
         val_map_metric.reset()
+        log_writer.add_scalar(
+            'map/val',
+            val_map_dict['map'].to(device=cpu_device),
+            epoch)
         log_writer.add_scalar(
             'map_small/val',
             val_map_dict['map_small'].to(device=cpu_device),
@@ -272,22 +280,21 @@ def main(**kwargs):
 
         print('TrainLoss:', train_loss.item())
         print('ValLoss:', val_loss.item())
-        # print('TrainMap:', train_map_dict['map'].item())
         print('ValMap:', val_map_dict['map'].item())
         print('Lr:', lr)
 
         # Save model
-        if best_metric < val_map_dict['map'].item():
-            torch.save(
-                model.state_dict(), ckpt_dir / 'best_model.pt')
-        torch.save(
-            {
-                'model': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'lr_scheduler': lr_scheduler.state_dict(),
-                'epoch': epoch + 1
-            },
-            ckpt_dir / 'last_checkpoint.pth')
+        checkpoint = {
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'scheduler_state_dict': lr_scheduler.state_dict(),
+            'epoch': epoch + 1
+        }
+        torch.save(checkpoint, ckpt_dir / 'last_checkpoint.pth')
+
+        if best_metric is None or best_metric < val_map_dict['map'].item():
+            torch.save(checkpoint, ckpt_dir / 'best_checkpoint.pth')
+            best_metric = val_map_dict['map'].item()
 
     log_writer.close()
 
@@ -302,7 +309,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         'config_pth', type=Path,
         help='Путь к конфигу обучения.')
-    args = parser.parse_args()
+    args = parser.parse_args(['Yolov7/custom/configs/tank_1.json'])
     return args
 
 
