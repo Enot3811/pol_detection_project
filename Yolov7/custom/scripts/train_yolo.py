@@ -155,8 +155,6 @@ def main(**kwargs):
         optimizer.load_state_dict(optim_params)
 
     # Get the scheduler
-    # n_scheduler_steps = ceil(
-    #     len(train_loader) / n_accumulate_steps) * config['n_epoch']
     lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=config['n_epoch'], eta_min=1e-6,
         last_epoch=start_ep - 1)
@@ -226,8 +224,7 @@ def main(**kwargs):
                     nms_threshold=config['iou_thresh'])
 
                 map_preds = [
-                    {'boxes': box_convert(
-                        image_preds[:, :4], 'cxcywh', 'xyxy'),
+                    {'boxes': image_preds[:, :4],
                      'labels': image_preds[:, -1].long(),
                      'scores': image_preds[:, -2]}
                     for image_preds in nms_predictions]
@@ -309,7 +306,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         'config_pth', type=Path,
         help='Путь к конфигу обучения.')
-    args = parser.parse_args(['Yolov7/custom/configs/tank_1.json'])
+    args = parser.parse_args()
     return args
 
 
