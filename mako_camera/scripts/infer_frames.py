@@ -41,6 +41,8 @@ def show_pol(pth: Path) -> int:
     print(pth.name)
     if SAVE:
         name = pth.name.split('.')[0] + '.jpg'
+        save_image((split_channels[..., :3] * 255).astype(np.uint8),
+                   FRAME_PATH.parent / 'pseudo_rgb' / name)
         save_image(hsv, FRAME_PATH.parent / 'hsv' / name)
         save_image(aolp_img, FRAME_PATH.parent / 'aolp' / name)
         save_image(dolp_img, FRAME_PATH.parent / 'dolp' / name)
@@ -68,7 +70,7 @@ def main():
 
 
 if __name__ == '__main__':
-    FRAME_PATH = Path('data/camera/2023_09_09/bayer_rg8')
+    FRAME_PATH = Path('data/tank_1set_pol/images')
     WIN_SIZE = (700, 700)
     SORT_BY_INDEX = True
     SAVE = False
