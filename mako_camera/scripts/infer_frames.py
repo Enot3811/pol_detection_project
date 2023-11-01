@@ -30,15 +30,19 @@ def show_pol(pth: Path) -> int:
     aolp_img = normalize_to_image(aolp)
     hsv = pol_func.hsv_pol(aolp, dolp, pol_int)
     
-    cv2.imshow('Pseudo rgb', resize_image(split_channels[..., :3], WIN_SIZE))
-    cv2.imshow('Channel 0', resize_image(split_channels[..., 0], WIN_SIZE))
-    cv2.imshow('Channel 45', resize_image(split_channels[..., 1], WIN_SIZE))
-    cv2.imshow('Channel 90', resize_image(split_channels[..., 2], WIN_SIZE))
-    cv2.imshow('Channel 135', resize_image(split_channels[..., 3], WIN_SIZE))
-    cv2.imshow('AoLP', resize_image(aolp_img, WIN_SIZE))
-    cv2.imshow('DoLP', resize_image(dolp_img, WIN_SIZE))
-    cv2.imshow('HSV', resize_image(hsv, WIN_SIZE))
-    print(pth.name)
+    if SHOW:
+        cv2.imshow('Pseudo rgb', resize_image(split_channels[..., :3], WIN_SIZE))
+        cv2.imshow('Channel 0', resize_image(split_channels[..., 0], WIN_SIZE))
+        cv2.imshow('Channel 45', resize_image(split_channels[..., 1], WIN_SIZE))
+        cv2.imshow('Channel 90', resize_image(split_channels[..., 2], WIN_SIZE))
+        cv2.imshow('Channel 135', resize_image(split_channels[..., 3], WIN_SIZE))
+        cv2.imshow('AoLP', resize_image(aolp_img, WIN_SIZE))
+        cv2.imshow('DoLP', resize_image(dolp_img, WIN_SIZE))
+        cv2.imshow('HSV', resize_image(hsv, WIN_SIZE))
+        print(pth.name)
+        key = cv2.waitKey(0) & 0xFF
+    else:
+        key = None
     if SAVE:
         name = pth.name.split('.')[0] + '.jpg'
         save_image((split_channels[..., :3] * 255).astype(np.uint8),
@@ -46,7 +50,6 @@ def show_pol(pth: Path) -> int:
         save_image(hsv, FRAME_PATH.parent / 'hsv' / name)
         save_image(aolp_img, FRAME_PATH.parent / 'aolp' / name)
         save_image(dolp_img, FRAME_PATH.parent / 'dolp' / name)
-    key = cv2.waitKey(0) & 0xFF
     return key
 
 
@@ -70,8 +73,9 @@ def main():
 
 
 if __name__ == '__main__':
-    FRAME_PATH = Path('data/tank_1set_pol/images')
+    FRAME_PATH = Path('data/tank_3set_pol/images')
     WIN_SIZE = (700, 700)
     SORT_BY_INDEX = True
+    SHOW = True
     SAVE = False
     main()
