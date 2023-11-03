@@ -132,7 +132,8 @@ def main(**kwargs):
 
     # Get the model and loss
     model = create_yolo(num_classes=num_classes,
-                        pretrained=config['pretrained'])
+                        pretrained=config['pretrained'],
+                        model_arch=config['model_arch'])
     model.to(device=device)
     if model_params:
         model.load_state_dict(model_params)

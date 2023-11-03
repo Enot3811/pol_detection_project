@@ -84,7 +84,8 @@ def load_yolo_checkpoint(weights_pth: Path, num_classes: int) -> Yolov7Model:
 def create_yolo(
     num_classes: int = 80,
     num_channels: int = 3,
-    pretrained: bool = True
+    pretrained: bool = True,
+    model_arch: str = 'yolov7'
 ) -> Yolov7Model:
     """Create yolo model.
 
@@ -96,6 +97,8 @@ def create_yolo(
         A number of model's channels. By default is 3.
     pretrained : bool, optional
         Whether to load the official pretrained weights. By default is `True`.
+    model_arch : str, optional
+        Model's architecture.
 
     Returns
     -------
@@ -111,7 +114,7 @@ def create_yolo(
         raise ValueError('There are not pretrained weights '
                          'for 4 channels model.')
     model = create_yolov7_model(
-        'yolov7', num_classes=num_classes, pretrained=pretrained,
+        model_arch, num_classes=num_classes, pretrained=pretrained,
         num_channels=num_channels)
     model = model.eval()
     return model
