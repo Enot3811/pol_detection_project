@@ -44,7 +44,7 @@ def load_tanks_df(annotations_file_path: Path, images_path: Path):
     image_to_image_id = {v: k for k, v, in image_id_to_image.items()}
 
     annotations_df = pd.read_csv(annotations_file_path)
-    annotations_df.loc[:, "class_name"] = "car"
+    annotations_df.loc[:, "class_name"] = "Tank"
     annotations_df.loc[:, "has_annotation"] = True
 
     # add 100 empty images to the dataset
@@ -111,8 +111,8 @@ def main(**kwargs):
 
     # load data
     data_path = Path(data_path)
-    images_path = data_path / "images"
-    annotations_file_path = data_path / "pd_annotations.csv"
+    images_path = data_path / 'images'
+    annotations_file_path = data_path / (data_path.name + '.csv')
     train_df, valid_df, lookups = load_tanks_df(annotations_file_path,
                                                 images_path)
     num_classes = 1
@@ -227,7 +227,7 @@ def main(**kwargs):
 
 if __name__ == '__main__':
     data_path = Path(__file__).parents[3] / 'data' / 'tank_2set_rgb'
-    work_dir = Path(__file__).parents[2] / 'work_dir' / 'train_1'
+    work_dir = Path(__file__).parents[2] / 'work_dir' / 'debug_train'
     image_size = 640
     pretrained = True
     num_epochs = 100
