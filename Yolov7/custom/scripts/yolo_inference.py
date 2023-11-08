@@ -65,7 +65,7 @@ def main(samples_pth: Path, config_pth: Path, conf_thresh: float,
     samples_pths.sort()
 
     # Загрузить модель
-    weights_pth = config['work_dir'] / 'ckpts' / 'best_checkpoint.pth'
+    weights_pth = Path(config['work_dir']) / 'ckpts' / 'best_checkpoint.pth'
     model = load_yolo_checkpoint(weights_pth, num_classes)
 
     # Обработка семплов
@@ -113,13 +113,18 @@ def parse_args() -> argparse.Namespace:
                         help='Путь к семплу или директории.')
     parser.add_argument('config_pth', type=Path,
                         help='Путь к конфигу модели.')
-    parser.add_argument('--conf_thresh', type=float, default=0.6,
+    parser.add_argument('--conf_thresh', type=float, default=0.3,
                         help='Порог уверенности модели.')
     parser.add_argument('--iou_thresh', type=float, default=0.2,
                         help='Порог перекрытия рамок.')
     parser.add_argument('--show_time', action='store_true',
                         help='Показывать время выполнения сети.')
     args = parser.parse_args()
+
+    if not args.samples_pth.exists():
+        raise FileExistsError('Samples file or dir does not exist.')
+    if not args.config_pth.exists():
+        raise FileExistsError('Config file does not exist.')
     return args
 
 
