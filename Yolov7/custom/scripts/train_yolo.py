@@ -73,6 +73,9 @@ def main(**kwargs):
 
     n_accumulate_steps = ceil(
         config['nominal_batch_size'] / config['batch_size'])
+    
+    num_channels = 4 if config['polarization'] else 3
+    pad_colour = (114,) * num_channels
 
     # Check and load checkpoint
     if config['continue_training']:
@@ -92,26 +95,31 @@ def main(**kwargs):
     
     # Get transforms
     post_mosaic_transforms = create_post_mosaic_transform(
-        config['input_size'], config['input_size'])
+        config['input_size'], config['input_size'], pad_colour=pad_colour)
     yolo_train_transforms = create_yolov7_transforms(
-        (config['input_size'], config['input_size']), training=True)
+        (config['input_size'], config['input_size']), training=True,
+        pad_colour=pad_colour)
     yolo_val_transforms = create_yolov7_transforms(
-        (config['input_size'], config['input_size']), training=False)
+        (config['input_size'], config['input_size']), training=False,
+        pad_colour=pad_colour)
 
     # Get datasets and loaders
     train_dir = Path(config['dataset']) / 'train'
     val_dir = Path(config['dataset']) / 'val'
 
     train_dset = TankDetectionDataset(
-        train_dir, name2index=config['cls_to_id'])
+        train_dir, name2index=config['cls_to_id'],
+        polarization=config['polarization'])
     val_dset = TankDetectionDataset(
-        val_dir, name2index=config['cls_to_id'])
+        val_dir, name2index=config['cls_to_id'],
+        polarization=config['polarization'])
     num_classes = len(config['cls_to_id'])
 
     mosaic_mixup_dset = MosaicMixupDataset(
         train_dset,
         apply_mosaic_probability=config['mosaic_prob'],
         apply_mixup_probability=config['mixup_prob'],
+        pad_colour=pad_colour,
         post_mosaic_transforms=post_mosaic_transforms)
     
     if config['pretrained']:
@@ -132,6 +140,7 @@ def main(**kwargs):
 
     # Get the model and loss
     model = create_yolo(num_classes=num_classes,
+                        num_channels=num_channels,
                         pretrained=config['pretrained'],
                         model_arch=config['model_arch'])
     model.to(device=device)
