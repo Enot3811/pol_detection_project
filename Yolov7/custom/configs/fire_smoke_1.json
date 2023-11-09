@@ -13,6 +13,7 @@
     "conf_thresh": 0.01,
     "iou_thresh": 0.3,
     "pretrained": true,
+    "polarization": false,
 
     "dataset": "data/fire_smoke/rf_smoke_wildfire_v11",
     "batch_size": 16,

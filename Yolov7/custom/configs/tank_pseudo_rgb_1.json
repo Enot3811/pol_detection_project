@@ -6,7 +6,7 @@
     "lr": 0.01,
     "weight_decay": 0.0005,
     "n_epoch": 100,
-    "work_dir": "Yolov7/work_dir/tank_1",
+    "work_dir": "Yolov7/work_dir/tank_pseudo_rgb_1",
     "input_size": 640,
 
     "model_arch": "yolov7",
@@ -15,7 +15,7 @@
     "pretrained": true,
     "polarization": false,
 
-    "dataset": "data/train_tank_rgb",
+    "dataset": "data/train_tank_pseudo_rgb",
     "batch_size": 16,
     "nominal_batch_size": 64,
     "shuffle_train": true,
