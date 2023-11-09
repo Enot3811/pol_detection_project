@@ -73,6 +73,8 @@ class TankDetectionDataset(ObjectDetectionDataset):
             sample = self.cvat_dset[idx]
             img_name = sample['name']
             classes = sample['labels']
+            classes = list(map(lambda label: float(self.class_to_index[label]),
+                               classes))
             bboxes = sample['bboxes']
             shape = sample['shape']
             image = np.load(self.image_dir / img_name)
