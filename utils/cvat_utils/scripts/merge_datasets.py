@@ -1,4 +1,7 @@
-"""Merge several object detection CVAT datasets into one."""
+"""Merge several object detection CVAT datasets into one.
+
+Modified for pol_detection_project.
+"""
 
 
 import argparse
@@ -6,6 +9,9 @@ from pathlib import Path
 import sys
 from typing import List, Set
 import shutil
+
+import numpy as np
+from numpy.typing import NDArray
 
 sys.path.append(str(Path(__file__).parents[3]))
 from utils.cvat_utils.cvat_datasets import CvatObjectDetectionDataset
@@ -15,7 +21,10 @@ from utils.cvat_utils.cvat_functions import create_cvat_object_detection_xml
 
 
 class TempSample(BaseObjectDetectionSample):
-    """Temporary sample class with additional path to save image."""
+    """
+    Temporary sample class with additional path to save image 
+    and modified image getter.
+    """
     def __init__(
         self,
         img_pth: Path,
@@ -26,10 +35,37 @@ class TempSample(BaseObjectDetectionSample):
         self.new_pth = new_pth
     
     def get_image_path(self, new_pth: bool = True) -> Path:
+        """Переопределение для возможности взаимодействовать с новым путём.
+
+        Parameters
+        ----------
+        new_pth : bool, optional
+            Выдать новый путь, по умолчанию True
+
+        Returns
+        -------
+        Path
+            Новый или оригинальный путь до изображения.
+        """
         if new_pth:
             return self.new_pth
         else:
             return super().get_image_path()
+        
+    def get_image(self) -> NDArray:
+        """Get source image of this sample.
+
+        Work with both images and numpy files.
+
+        Returns
+        -------
+        NDArray
+            The source image of this sample.
+        """
+        if self._img_pth.name[-4:] == '.npy':
+            return np.load(self._img_pth)
+        else:
+            return super().get_image()
 
 
 def main(**kwargs):

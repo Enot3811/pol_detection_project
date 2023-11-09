@@ -1,4 +1,7 @@
-"""Merge several object detection CVAT datasets into one."""
+"""Merge several object detection CVAT datasets into one.
+
+Modified for pol_detection_project.
+"""
 
 
 import argparse
@@ -9,11 +12,33 @@ import shutil
 import random
 from math import ceil
 
+import numpy as np
+from numpy.typing import NDArray
+
 sys.path.append(str(Path(__file__).parents[3]))
 from utils.cvat_utils.cvat_datasets import CvatObjectDetectionDataset
 from utils.data_utils.datasets import (
     BaseObjectDetectionAnnotation, BaseObjectDetectionSample)
 from utils.cvat_utils.cvat_functions import create_cvat_object_detection_xml
+
+
+class TempSample(BaseObjectDetectionSample):
+    """Temporary sample class with modified image getter."""
+        
+    def get_image(self) -> NDArray:
+        """Get source image of this sample.
+
+        Work with both images and numpy files.
+
+        Returns
+        -------
+        NDArray
+            The source image of this sample.
+        """
+        if self._img_pth.name[-4:] == '.npy':
+            return np.load(self._img_pth)
+        else:
+            return super().get_image()
 
 
 def main(**kwargs):
@@ -25,7 +50,7 @@ def main(**kwargs):
     images_dir = dset_dir / 'images'
 
     # Collect all samples and class labels
-    samples: List[BaseObjectDetectionSample] = []
+    samples: List[TempSample] = []
     set_classes: Set[str] = set()
 
     dset = CvatObjectDetectionDataset(dset_dir)
@@ -41,7 +66,7 @@ def main(**kwargs):
             set_classes.add(cls)
 
         img_pth = images_dir / img_name
-        samples.append(BaseObjectDetectionSample(img_pth, img_annots))
+        samples.append(TempSample(img_pth, img_annots))
     set_classes = list(set_classes)
 
     # Shuffle and split
@@ -90,7 +115,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--random_seed', type=int, default=42,
         help='A random seed for split.')
-    args = parser.parse_args()
+    args = parser.parse_args([
+        'data/union_tank_dataset_pol',
+        'data/train_tank_pol',
+        '0.8', '0.2'
+    ])
     return args
 
 
