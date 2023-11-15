@@ -14,7 +14,7 @@ from yolov7.models.yolo import Yolov7Model
 
 def intersect_dicts(da: Dict, db: Dict, exclude: Tuple = ()) -> Dict:
     """Пересечение словарей.
-    
+
     Возвращает элементы, которые есть и в первом и во втором.
     Используется, чтобы выбрать только нужные веса модели при загрузке.
 
@@ -62,7 +62,7 @@ def load_yolo_checkpoint(weights_pth: Path, num_classes: int) -> Yolov7Model:
     state_dict = torch.load(weights_pth)['model_state_dict']
     # Get first conv layer and check its depth
     num_channels = state_dict['model.0.conv.weight'].shape[1]
-    
+
     # Create empty model
     model = create_yolov7_model(
         'yolov7', num_classes=num_classes, pretrained=False,
@@ -79,7 +79,7 @@ def load_yolo_checkpoint(weights_pth: Path, num_classes: int) -> Yolov7Model:
         f'items from {weights_pth}')
     model = model.eval()
     return model
-    
+
 
 def create_yolo(
     num_classes: int = 80,
@@ -104,15 +104,7 @@ def create_yolo(
     -------
     Yolov7Model
         The created yolo model.
-
-    Raises
-    ------
-    ValueError
-        There are not pretrained weights for 4 channels model.
     """
-    if num_channels == 4 and pretrained:
-        raise ValueError('There are not pretrained weights '
-                         'for 4 channels model.')
     model = create_yolov7_model(
         model_arch, num_classes=num_classes, pretrained=pretrained,
         num_channels=num_channels)

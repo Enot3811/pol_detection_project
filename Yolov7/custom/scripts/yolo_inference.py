@@ -14,12 +14,14 @@ import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 import torch
 import cv2
+import numpy as np
 
 sys.path.append(str(Path(__file__).parents[3]))
 from utils.image_utils.image_functions import read_image
 from utils.torch_utils.torch_functions import draw_bounding_boxes
 from Yolov7.yolov7.dataset import create_yolov7_transforms
 from Yolov7.custom.model_utils import load_yolo_checkpoint, yolo_inference
+from mako_camera.cameras_utils import split_raw_pol
 
 
 def main(samples_pth: Path, config_pth: Path, conf_thresh: float,
@@ -52,12 +54,19 @@ def main(samples_pth: Path, config_pth: Path, conf_thresh: float,
 
     cls_id_to_name = {val: key for key, val in config['cls_to_id'].items()}
     num_classes = len(cls_id_to_name)
+    num_channels = 4 if config['polarization'] else 3
+    pad_colour = (114,) * num_channels
 
     # Получить все пути
     if samples_pth.is_dir():
         samples_pths = []
-        for ext in ('jpg', 'JPG', 'png', 'PNG'):
-            samples_pths += list(samples_pth.glob(f'*.{ext}'))
+        # RGB
+        if config['polarization']:
+            samples_pths = list(samples_pth.glob('*.npy'))
+        # Pol
+        else:
+            for ext in ('jpg', 'JPG', 'png', 'PNG'):
+                samples_pths += list(samples_pth.glob(f'*.{ext}'))
     elif samples_pth.is_file():
         samples_pths = [samples_pth]
     else:
@@ -69,12 +78,16 @@ def main(samples_pth: Path, config_pth: Path, conf_thresh: float,
     model = load_yolo_checkpoint(weights_pth, num_classes)
 
     # Обработка семплов
-    process_transforms = create_yolov7_transforms()
+    process_transforms = create_yolov7_transforms(pad_colour=pad_colour)
     normalize_transforms = A.Compose(
         [ToTensorV2(transpose_mask=True)])
 
     for sample_pth in samples_pths:
-        image = read_image(sample_pth)  # ndarray (h, w, 3)
+        if config['polarization']:
+            image = np.load(sample_pth)  # ndarray (h, w)
+            image = split_raw_pol(image)  # ndarray (h//2, w//2, 4)
+        else:
+            image = read_image(sample_pth)  # ndarray (h, w, 3)
 
         image = process_transforms(image=image, bboxes=[], labels=[])['image']
         tensor_image = normalize_transforms(image=image)['image']
@@ -91,8 +104,8 @@ def main(samples_pth: Path, config_pth: Path, conf_thresh: float,
         classes = list(map(lambda idx: cls_id_to_name[idx],
                            class_ids))
         bbox_img = draw_bounding_boxes(
-            image, bboxes, class_labels=classes, confidences=confs)
-        
+            image[..., :3], bboxes, class_labels=classes, confidences=confs)
+
         print(sample_pth.name)
         cv2.imshow('Yolo inference (press any key)',
                    cv2.cvtColor(bbox_img, cv2.COLOR_RGB2BGR))
