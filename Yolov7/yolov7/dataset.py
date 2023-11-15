@@ -30,6 +30,7 @@ def create_yolov7_transforms(
     image_size=(640, 640),
     training=False,
     training_transforms=(A.HorizontalFlip(p=0.5),),
+    pad_colour=(114, 114, 114)
 ):
     transforms = [
         A.LongestMaxSize(max(image_size)),
@@ -37,7 +38,7 @@ def create_yolov7_transforms(
             image_size[0],
             image_size[1],
             border_mode=0,
-            value=(114, 114, 114),
+            value=pad_colour,
         ),
     ]
 
