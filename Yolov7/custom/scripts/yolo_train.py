@@ -172,7 +172,8 @@ def main(**kwargs):
         lr_scheduler.load_state_dict(lr_params)
     
     # Get metrics
-    val_map_metric = MeanAveragePrecision(extended_summary=False)
+    val_map_metric = MeanAveragePrecision(
+        iou_thresholds=[config['iou_thresh']])
     train_loss_metric = YoloLossMetric()
     val_loss_metric = YoloLossMetric()
     val_map_metric.to(device=device)
