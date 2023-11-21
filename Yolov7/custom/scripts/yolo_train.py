@@ -24,7 +24,8 @@ from Yolov7.yolov7.loss_factory import create_yolov7_loss
 from Yolov7.yolov7.mosaic import (
     MosaicMixupDataset, create_post_mosaic_transform)
 from Yolov7.yolov7.trainer import filter_eval_predictions
-from Yolov7.custom.datasets import TankDetectionDataset
+from Yolov7.custom.datasets import (
+    TankDetectionDataset, TankDetectionDatasetAdditional)
 from Yolov7.custom.model_utils import create_yolo
 
 
@@ -74,7 +75,16 @@ def main(**kwargs):
     n_accumulate_steps = ceil(
         config['nominal_batch_size'] / config['batch_size'])
     
-    num_channels = 4 if config['polarization'] else 3
+    if config['polarization']:
+        if 'active_ch' in config:
+            num_channels = 2
+            active_ch = config['active_ch']
+        else:
+            num_channels = 4
+            active_ch = None
+    else:
+        num_channels = 3
+        active_ch = None
     pad_colour = (114,) * num_channels
 
     # Check and load checkpoint
@@ -107,12 +117,22 @@ def main(**kwargs):
     train_dir = Path(config['dataset']) / 'train'
     val_dir = Path(config['dataset']) / 'val'
 
-    train_dset = TankDetectionDataset(
-        train_dir, name2index=config['cls_to_id'],
-        polarization=config['polarization'])
-    val_dset = TankDetectionDataset(
-        val_dir, name2index=config['cls_to_id'],
-        polarization=config['polarization'])
+    if active_ch is None:
+        train_dset = TankDetectionDataset(
+            train_dir, name2index=config['cls_to_id'],
+            polarization=config['polarization'])
+        val_dset = TankDetectionDataset(
+            val_dir, name2index=config['cls_to_id'],
+            polarization=config['polarization'])
+    else:
+        train_dset = TankDetectionDatasetAdditional(
+            train_dir, name2index=config['cls_to_id'],
+            polarization=config['polarization'],
+            active_ch=active_ch)
+        val_dset = TankDetectionDatasetAdditional(
+            val_dir, name2index=config['cls_to_id'],
+            polarization=config['polarization'],
+            active_ch=active_ch)
     num_classes = len(config['cls_to_id'])
 
     mosaic_mixup_dset = MosaicMixupDataset(
@@ -205,6 +225,8 @@ def main(**kwargs):
                 (step + 1) % n_accumulate_steps == 0
             ) or (step + 1 == len(train_loader))
             if perform_gradient_update:
+                # TODO при продолжении обучения ломается на step из-за
+                # размерностей
                 optimizer.step()
                 optimizer.zero_grad()
             
