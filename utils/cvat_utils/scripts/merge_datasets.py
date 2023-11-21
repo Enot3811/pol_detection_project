@@ -22,7 +22,7 @@ from utils.cvat_utils.cvat_functions import create_cvat_object_detection_xml
 
 class TempSample(BaseObjectDetectionSample):
     """
-    Temporary sample class with additional path to save image 
+    Temporary sample class with additional path to save image
     and modified image getter.
     """
     def __init__(
