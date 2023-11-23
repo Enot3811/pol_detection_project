@@ -3,6 +3,7 @@
 
 import sys
 from pathlib import Path
+import shutil
 import json
 import argparse
 from math import ceil
@@ -69,6 +70,11 @@ def main(**kwargs):
     tensorboard_dir = work_dir / 'tensorboard'
     ckpt_dir = work_dir / 'ckpts'
     if not config['continue_training']:
+        if work_dir.exists():
+            input('Specified directory already exists. '
+                  'Сontinuing to work will delete the data located there. '
+                  'Press enter to continue.')
+            shutil.rmtree(work_dir)
         tensorboard_dir.mkdir(parents=True, exist_ok=True)
         ckpt_dir.mkdir(parents=True, exist_ok=True)
 
@@ -340,6 +346,9 @@ def parse_args() -> argparse.Namespace:
         'config_pth', type=Path,
         help='Путь к конфигу обучения.')
     args = parser.parse_args()
+
+    if not args.config_pth.exists():
+        raise FileNotFoundError('Specified config file does not exists.')
     return args
 
 
