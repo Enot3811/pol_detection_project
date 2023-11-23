@@ -4,6 +4,7 @@
 from pathlib import Path
 from typing import Dict, Union, Callable, Tuple, List
 
+import numpy as np
 from numpy.typing import NDArray
 from torch.utils.data import Dataset
 
@@ -80,7 +81,10 @@ class ObjectDetectionDataset(Dataset):
         classes = list(map(lambda label: float(self.class_to_index[label]),
                            classes))
         img_pth = self.image_dir / img_name
-        image = read_image(img_pth)
+        if img_pth.name[-4:] == '.npy':
+            image = np.load(img_pth)
+        else:
+            image = read_image(img_pth)
 
         if self.transforms:
             image, bboxes, classes = self.apply_transforms(
