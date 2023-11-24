@@ -5,17 +5,17 @@
     "device": "cuda",
     "lr": 0.01,
     "weight_decay": 0.0005,
-    "n_epoch": 100,
-    "work_dir": "Yolov7/work_dir/tank_4",
+    "n_epoch": 1000,
+    "work_dir": "Yolov7/work_dir/tank_pol_5_not_pretrained",
     "input_size": 640,
 
     "model_arch": "yolov7",
     "conf_thresh": 0.01,
     "iou_thresh": 0.3,
-    "pretrained": true,
-    "polarization": false,
+    "pretrained": false,
+    "polarization": true,
 
-    "dataset": "data/train_tank_rgb_npy",
+    "dataset": "data/train_tank_pol",
     "batch_size": 16,
     "nominal_batch_size": 64,
     "shuffle_train": true,
@@ -23,6 +23,6 @@
     "cls_to_id": {
         "Tank": 0
     },
-    "mosaic_prob": 1.0,
-    "mixup_prob": 0.15
+    "mosaic_prob": 0.0,
+    "mixup_prob": 0.0
 }
