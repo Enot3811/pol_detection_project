@@ -6,7 +6,7 @@
     "lr": 0.01,
     "weight_decay": 0.0005,
     "n_epoch": 100,
-    "work_dir": "Yolov7/work_dir/tank_4",
+    "work_dir": "Yolov7/work_dir/tank_6",
     "input_size": 640,
 
     "model_arch": "yolov7",
@@ -23,6 +23,7 @@
     "cls_to_id": {
         "Tank": 0
     },
-    "mosaic_prob": 1.0,
-    "mixup_prob": 0.15
+    "mosaic_prob": 0.0,
+    "mixup_prob": 0.0,
+    "random_crop": true
 }
