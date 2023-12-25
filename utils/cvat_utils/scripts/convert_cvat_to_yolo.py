@@ -120,22 +120,32 @@ def main(cvat_contain_dir: Path, save_dir: Path, copy_images: bool = False):
         desc = f'Convert {orig_dset_pth.name} set'
         for sample in tqdm(dset, desc=desc):
             txt_pth = labels_dir / (sample['name'].split('.')[0] + '.txt')
-            xyxy = torch.tensor(sample['bboxes'])
-            cxcywh = box_convert(xyxy, 'xyxy', 'cxcywh')
-            cxcywh[:, [1, 3]] /= sample['shape'][0]  # normalized height 0-1
-            cxcywh[:, [0, 2]] /= sample['shape'][1]  # normalized width 0-1
-            classes = torch.tensor(
-                list(map(lambda cls_name: cls_to_id[cls_name],
-                         sample['labels']))
-            )[:, None]
-            img_labels = torch.hstack((classes, cxcywh))
-            img_labels = img_labels.tolist()
-            str_labels = []
-            for img_label in img_labels:
-                img_label[0] = int(img_label[0])
-                str_labels.append(' '.join(map(str, img_label)) + '\n')
-            with open(txt_pth, 'w') as f:
-                f.writelines(str_labels)
+            # If there are some objects
+            if len(sample['labels']) > 0:
+                # Read classes of sample
+                classes = torch.tensor(
+                    list(map(lambda cls_name: cls_to_id[cls_name],
+                             sample['labels']))
+                )[:, None]
+                # Read bboxes of sample
+                xyxy = torch.tensor(sample['bboxes'])
+                cxcywh = box_convert(xyxy, 'xyxy', 'cxcywh')
+                # normalized height and width 0-1
+                cxcywh[:, [1, 3]] /= sample['shape'][0]
+                cxcywh[:, [0, 2]] /= sample['shape'][1]
+                img_labels = torch.hstack((classes, cxcywh))
+                img_labels = img_labels.tolist()
+                str_labels = []
+                for img_label in img_labels:
+                    img_label[0] = int(img_label[0])
+                    str_labels.append(' '.join(map(str, img_label)) + '\n')
+                with open(txt_pth, 'w') as f:
+                    f.writelines(str_labels)
+            # If there are no objects on image
+            else:
+                # Make an empty file
+                with open(txt_pth, 'w') as f:
+                    pass
 
             if copy_images:
                 orig_img_pth = orig_dset_pth / 'images' / sample['name']
@@ -174,11 +184,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--copy_images', action='store_true',
         help='Whether dataset images to be copied.')
-    args = parser.parse_args([
-        'data/fire_smoke/train_fire_smoke',
-        'data/fire_smoke/train_fire_smoke_yolo',
-        '--copy_images'
-    ])
+    args = parser.parse_args()
 
     if not args.cvat_contain_dir.exists():
         raise FileNotFoundError('cvat_contain_dir does not exist.')
