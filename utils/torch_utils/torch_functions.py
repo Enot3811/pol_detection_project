@@ -60,7 +60,8 @@ def draw_bounding_boxes(
     line_width : int, optional
         A width of the bounding boxes' lines. By default is 1.
     color : Tuple[int, int, int], optional
-        A color of the bounding boxes' lines. By default is `(255, 255, 255)`.
+        A color of the bounding boxes' lines in RGB.
+        By default is `(255, 255, 255)`.
 
     Returns
     -------
@@ -106,5 +107,5 @@ def draw_bounding_boxes(
             put_text += 'conf: {:.2f}'.format(confidences[i])
         if put_text != '':
             cv2.putText(image, put_text, (x1, y1 - 2), 0, 0.3,
-                        (255, 255, 255), 1)
+                        color, 1)
     return image
