@@ -29,13 +29,19 @@ def show_pol(pth: Path) -> int:
     dolp_img = normalize_to_image(dolp)
     aolp_img = normalize_to_image(aolp)
     hsv = pol_func.hsv_pol(aolp, dolp, pol_int)
-    
+    pseudo_rgb = split_channels[..., :3]
+    pseudo_rgb[..., 2] = (pseudo_rgb[..., 2] + split_channels[..., 3]) / 2
+
     if SHOW:
-        cv2.imshow('Pseudo rgb', resize_image(split_channels[..., :3], WIN_SIZE))
-        cv2.imshow('Channel 0', resize_image(split_channels[..., 0], WIN_SIZE))
-        cv2.imshow('Channel 45', resize_image(split_channels[..., 1], WIN_SIZE))
-        cv2.imshow('Channel 90', resize_image(split_channels[..., 2], WIN_SIZE))
-        cv2.imshow('Channel 135', resize_image(split_channels[..., 3], WIN_SIZE))
+        cv2.imshow('Pseudo rgb (1, 2, 3)', resize_image(split_channels[..., :3], WIN_SIZE))
+        cv2.imshow('Pseudo rgb (2, 3, 4)', resize_image(split_channels[..., 1:], WIN_SIZE))
+        cv2.imshow('Pseudo rgb (1, 3, 4)', resize_image(split_channels[..., [0, 2, 3]], WIN_SIZE))
+        cv2.imshow('Pseudo rgb (1, 2, 4)', resize_image(split_channels[..., [0, 1, 3]], WIN_SIZE))
+        cv2.imshow('Pseudo rgb', resize_image(pseudo_rgb, WIN_SIZE))
+        # cv2.imshow('Channel 0', resize_image(split_channels[..., 0], WIN_SIZE))
+        # cv2.imshow('Channel 45', resize_image(split_channels[..., 1], WIN_SIZE))
+        # cv2.imshow('Channel 90', resize_image(split_channels[..., 2], WIN_SIZE))
+        # cv2.imshow('Channel 135', resize_image(split_channels[..., 3], WIN_SIZE))
         cv2.imshow('AoLP', resize_image(aolp_img, WIN_SIZE))
         cv2.imshow('DoLP', resize_image(dolp_img, WIN_SIZE))
         cv2.imshow('HSV', resize_image(hsv, WIN_SIZE))
