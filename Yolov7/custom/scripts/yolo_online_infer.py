@@ -63,6 +63,17 @@ def main(
     
     pad_colour = (114,) * num_channels
 
+    # Загрузка модели
+    if config_pth:
+        model = load_yolo_checkpoint(weights_pth, num_classes)
+    else:
+        # Создать COCO модель
+        model = create_yolo(num_classes)
+
+    # Обработка семплов
+    process_transforms = create_yolov7_transforms(pad_colour=pad_colour)
+    normalize_transforms = A.Compose([ToTensorV2(transpose_mask=True)])
+
     img_paths = set(frames_dir.glob('*.*'))
     model = None
     image = np.zeros((500, 500, 3), np.uint8)
@@ -104,18 +115,6 @@ def main(
                     image = cv2.cvtColor(bayer, cv2.COLOR_BAYER_RG2BGR)
                 else:
                     image = read_image(pth)  # ndarray (h, w, 3)
-
-            # Загрузка модели и предобработки
-            if model is None:
-                if config_pth:
-                    model = load_yolo_checkpoint(weights_pth, num_classes)
-                else:
-                    # Создать COCO модель
-                    model = create_yolo(num_classes)
-                process_transforms = create_yolov7_transforms(
-                    pad_colour=pad_colour)
-                normalize_transforms = A.Compose(
-                    [ToTensorV2(transpose_mask=True)])
 
             # Предобработка данных
             image = process_transforms(
