@@ -77,6 +77,8 @@ def main():
     else:
         raise
 
+    cv2.destroyAllWindows()
+
 
 if __name__ == '__main__':
     FRAME_PATH = Path('data/tank_3set_pol/images')
