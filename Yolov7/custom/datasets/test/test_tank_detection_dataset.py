@@ -1,154 +1,124 @@
-"""Тест для модуля `tank_detection_additional`.
+"""Скрипт для обучения yolov7."""
 
-Требуется конфиг обучения, где планируется использовать данный модуль.
-"""
 
 import sys
 from pathlib import Path
-import argparse
-import json
+import shutil
 
-from torchvision.ops import box_convert
 import cv2
+import torch
+from torch.utils.data import DataLoader
+from torchvision.ops import box_convert
 import albumentations as A
 
 sys.path.append(str(Path(__file__).parents[4]))
 from Yolov7.yolov7.dataset import (
-    Yolov7Dataset, create_yolov7_transforms)
+    Yolov7Dataset, create_yolov7_transforms, yolov7_collate_fn)
 from Yolov7.yolov7.mosaic import (
     MosaicMixupDataset, create_post_mosaic_transform)
 from Yolov7.custom.datasets import TankDetectionDataset
+from utils.image_utils.image_functions import show_images_cv2
 from utils.torch_utils.torch_functions import (
-    draw_bounding_boxes, image_tensor_to_numpy)
+    image_tensor_to_numpy, draw_bounding_boxes)
 
 
-def main(config_pth: str, dset_type: str):
-    # Read config
-    with open(config_pth, 'r') as f:
-        config_str = f.read()
-    config = json.loads(config_str)
-
-    dset_pth = Path(config['dataset']) / dset_type
+def main(
+    dset_dir: Path, input_size: int, polarization: bool, random_crop: bool,
+    horizontal_flip: bool, mosaic_prob: float, mixup_prob: float
+):  
+    # Polarization difference
+    if polarization:
+        num_channels = 4
+    else:
+        num_channels = 3
+    pad_colour = (114,) * num_channels
 
     # Get transforms
     post_mosaic_transforms = create_post_mosaic_transform(
-        config['input_size'], config['input_size'])
-    resize_to_show = A.Compose(
-        [A.LongestMaxSize(config['input_size'])],
+        input_size, input_size, pad_colour=pad_colour)
+    
+    training_transforms = []
+    if random_crop:
+        training_transforms.append(
+            A.RandomCropFromBorders(crop_left=0.4, crop_right=0.4,
+                                    crop_top=0.4, crop_bottom=0.4))
+    if horizontal_flip:
+        training_transforms.append(A.HorizontalFlip())
+
+    yolo_transforms = create_yolov7_transforms(
+        (input_size, input_size), training=True,
+        pad_colour=pad_colour, training_transforms=training_transforms)
+    
+    resize_func = A.Compose(
+        [A.Resize(910, 1620)],
         bbox_params=A.BboxParams(format='pascal_voc',
                                  label_fields=['classes']))
-    # post_mosaic_transforms = None
-    training_transforms = [
-        A.RandomCropFromBorders(crop_left=0.4, crop_right=0.4,
-                                crop_top=0.4, crop_bottom=0.4),
-        A.HorizontalFlip()
-    ]
-    yolo_transforms = create_yolov7_transforms(
-        (config['input_size'], config['input_size']), dset_type,
-        training_transforms=training_transforms)
 
-    # Get dataset
-    obj_dset = TankDetectionDataset(
-        dset_pth, name2index=config['cls_to_id'],
-        polarization=config['polarization'])
-    index_to_cls = obj_dset.index_to_class
+    # Get datasets and loaders
+    dset = TankDetectionDataset(
+        dset_dir, polarization=polarization)
 
     mosaic_mixup_dset = MosaicMixupDataset(
-        obj_dset,
-        apply_mosaic_probability=config['mosaic_prob'],
-        apply_mixup_probability=config['mixup_prob'],
+        dset,
+        apply_mosaic_probability=mosaic_prob,
+        apply_mixup_probability=mixup_prob,
+        pad_colour=pad_colour,
         post_mosaic_transforms=post_mosaic_transforms)
-    if dset_type != 'train':
-        mosaic_mixup_dset.disable()
     
     yolo_dset = Yolov7Dataset(mosaic_mixup_dset, yolo_transforms)
 
-    # iterate over datasets
-    for obj_sample, mos_sample, yolo_sample in zip(obj_dset,
-                                                   mosaic_mixup_dset,
-                                                   yolo_dset):
-        orig_img, orig_bboxes, orig_cls, img_name, orig_shape = obj_sample
-        mos_img, mos_bboxes, mos_cls, _, mos_shape = mos_sample
-        yolo_img, yolo_labels, _, yolo_shape = yolo_sample
+    # Check dataset
+    for orig_sample, mosaic_sample, yolo_sample in zip(dset,
+                                                       mosaic_mixup_dset,
+                                                       yolo_dset):
+        orig_img, orig_bboxes, orig_cls, orig_id, orig_shape = orig_sample
+        mosaic_img, mosaic_bboxes, mosaic_cls, mosaic_id, mosaic_shape = (
+            mosaic_sample)
+        yolo_img, yolo_labels, yolo_id, yolo_shape = yolo_sample
 
-        yolo_cls = yolo_labels[:, 1]
-        yolo_bboxes = yolo_labels[:, 2:]
-
-        # Convert yolo sample to normal format
         np_yolo_img = image_tensor_to_numpy(yolo_img)
-        ls_yolo_cls = yolo_cls.tolist()
-        
+        titles = [
+            'orig_img ' + str(orig_shape),
+            'mosaic_img ' + str(mosaic_shape),
+            'yolo_img ' + str(yolo_shape)
+        ]
+
+        res_orig = resize_func(
+            image=orig_img, bboxes=orig_bboxes, classes=orig_cls)
+        res_mosaic = resize_func(
+            image=mosaic_img, bboxes=mosaic_bboxes, classes=mosaic_cls)
+        res_orig_img = res_orig['image']
+        res_mosaic_img = res_mosaic['image']
+        res_orig_bboxes = res_orig['bboxes']
+        res_mosaic_bboxes = res_mosaic['bboxes']
+
+        yolo_bboxes = yolo_labels[:, 2:]
         yolo_bboxes[:, 0] *= np_yolo_img.shape[1]
         yolo_bboxes[:, 2] *= np_yolo_img.shape[1]
         yolo_bboxes[:, 1] *= np_yolo_img.shape[0]
         yolo_bboxes[:, 3] *= np_yolo_img.shape[0]
         yolo_bboxes = box_convert(yolo_bboxes, 'cxcywh', 'xyxy')
-        ls_yolo_bboxes = yolo_bboxes.tolist()
+        yolo_bboxes = yolo_bboxes.tolist()
 
-        str_orig_cls = list(map(lambda idx: index_to_cls[int(idx)],
-                                orig_cls))
-        str_mos_cls = list(map(lambda idx: index_to_cls[int(idx)],
-                               mos_cls))
-        str_ls_yolo_cls = list(map(lambda idx: index_to_cls[int(idx)],
-                                   ls_yolo_cls))
+        res_orig_img = draw_bounding_boxes(res_orig_img, res_orig_bboxes)
+        res_mosaic_img = draw_bounding_boxes(res_mosaic_img, res_mosaic_bboxes)
+        np_yolo_img = draw_bounding_boxes(np_yolo_img, yolo_bboxes)
 
-        resized = resize_to_show(
-            image=orig_img, bboxes=orig_bboxes, classes=orig_cls)
-        orig_img = resized['image']
-        orig_bboxes = resized['bboxes']
-        resized = resize_to_show(
-            image=mos_img, bboxes=mos_bboxes, classes=mos_cls)
-        mos_img = resized['image']
-        mos_bboxes = resized['bboxes']
-
-        orig_img_bboxes = draw_bounding_boxes(
-            orig_img, orig_bboxes, str_orig_cls, line_width=1)
-        mos_img_bboxes = draw_bounding_boxes(
-            mos_img, mos_bboxes, str_mos_cls, line_width=1)
-        yolo_img_bboxes = draw_bounding_boxes(
-            np_yolo_img, ls_yolo_bboxes, str_ls_yolo_cls)
-
-        print('Original shape:', orig_shape,
-              'Augmented base shape:', orig_img.shape)
-        print('Mosaic original shape:', mos_shape,
-              'Augmented mosaic shape:', mos_img.shape)
-        print('Yolo original shape:', yolo_shape,
-              'Augmented yolo shape:', yolo_img.shape, '\n')
-
-        cv2.imshow('orig', cv2.cvtColor(orig_img_bboxes,
-                   cv2.COLOR_RGB2BGR))
-        cv2.imshow('mos_mix', cv2.cvtColor(mos_img_bboxes,
-                   cv2.COLOR_RGB2BGR))
-        cv2.imshow('yolo', cv2.cvtColor(yolo_img_bboxes,
-                   cv2.COLOR_RGB2BGR))
-        key = cv2.waitKey(0)
-        if key == 27:
+        key_code = show_images_cv2(
+            [res_orig_img, res_mosaic_img, np_yolo_img], titles)
+        if key_code == 27:
             break
 
 
-def parse_args() -> argparse.Namespace:
-    """Create & parse command-line args."""
-    parser = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-
-    parser.add_argument(
-        'config_pth', type=Path,
-        help='Путь к конфигу обучения.')
-    parser.add_argument(
-        '--dset_type', type=str, default='train', choices=['train', 'val'],
-        help='Для "train" применяются аугментации, а для "val" нет.')
-
-    args = parser.parse_args()
-
-    if not args.config_pth.exists():
-        raise FileExistsError('Config file does not exist.')
-    return args
-
-
 if __name__ == "__main__":
-    args = parse_args()
-    config_pth = args.config_pth
-    dset_type = args.dset_type
-    main(config_pth=config_pth, dset_type=dset_type)
+    # Configs
+    dset_dir = Path('data/tank_5set_rgb')
+    input_size = 640
+    polarization = False
+    random_crop = True
+    horizontal_flip = False
+    mosaic_prob = 0.0
+    mixup_prob = 0.0
+    main(dset_dir=dset_dir, input_size=input_size, polarization=polarization,
+         random_crop=random_crop, mosaic_prob=mosaic_prob,
+         mixup_prob=mixup_prob, horizontal_flip=horizontal_flip)
