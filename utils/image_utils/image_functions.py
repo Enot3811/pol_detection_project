@@ -2,7 +2,7 @@
 
 
 from pathlib import Path
-from typing import Tuple, Union, Optional
+from typing import Tuple, Union, Optional, List
 
 import numpy as np
 from numpy.typing import NDArray
@@ -63,7 +63,7 @@ def resize_image(image: NDArray, new_size: Tuple[int, int]) -> NDArray:
         image, new_size, None, None, None, interpolation=cv2.INTER_LINEAR)
 
 
-def display_image(
+def show_image_plt(
     img: NDArray,
     ax: Optional[plt.Axes] = None,
     figsize: Tuple[int, int] = (16, 8)
@@ -89,6 +89,64 @@ def display_image(
         _, ax = plt.subplots(figsize=figsize)
     ax.imshow(img)
     return ax
+
+
+def show_images_cv2(
+    images: Union[NDArray, List[NDArray]],
+    window_title: Union[str, List[str]] = 'image',
+    destroy_windows: bool = False
+) -> int:
+    # TODO добавить в junkyard, если посчитаю её полезной
+    """Display one or a few images by cv2.
+
+    Press any key to close window.
+
+    Parameters
+    ----------
+    image : NDArray
+        Image array or list of image arrays.
+    window_title : Union[str, List[str]], optional
+        Image window's title. If List is provided it must have the same length
+        as the list of images.
+    destroy_windows : bool
+        Whether to destroy windows.
+
+    Returns
+    -------
+    int
+        Pressed key code.
+    """
+    key_code = 27  # esc by default
+    try:
+        if isinstance(images, (List, tuple)):
+            if isinstance(window_title, str):
+                one_title = True
+            elif (isinstance(window_title, list) and
+                  len(window_title) == len(images)):
+                one_title = False
+            else:
+                raise TypeError(
+                    '"window_title" must be str or List[str] with the same '
+                    'length as the list of images.')
+            for i, image in enumerate(images):
+                if one_title:
+                    title = f'{window_title}_{i}'
+                else:
+                    title = window_title[i]
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                cv2.imshow(title, image)
+        elif isinstance(images, NDArray):
+            images = cv2.cvtColor(images, cv2.COLOR_BAYER_RG2BGR)
+            cv2.imshow(window_title, images)
+        else:
+            raise TypeError('"images" must be NDArray or List of NDArrays, '
+                            f'but got {type(images)}')
+        key_code = cv2.waitKey(0)
+        if destroy_windows:
+            cv2.destroyAllWindows
+    except KeyboardInterrupt:
+        cv2.destroyAllWindows()
+    return key_code
 
 
 def normalize_to_image(values: NDArray) -> NDArray:
