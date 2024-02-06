@@ -3,17 +3,12 @@
 
 import sys
 from pathlib import Path
-import shutil
 
-import cv2
-import torch
-from torch.utils.data import DataLoader
 from torchvision.ops import box_convert
 import albumentations as A
 
 sys.path.append(str(Path(__file__).parents[4]))
-from Yolov7.yolov7.dataset import (
-    Yolov7Dataset, create_yolov7_transforms, yolov7_collate_fn)
+from Yolov7.yolov7.dataset import Yolov7Dataset, create_yolov7_transforms
 from Yolov7.yolov7.mosaic import (
     MosaicMixupDataset, create_post_mosaic_transform)
 from Yolov7.custom.datasets import TankDetectionDataset
@@ -25,7 +20,7 @@ from utils.torch_utils.torch_functions import (
 def main(
     dset_dir: Path, input_size: int, polarization: bool, random_crop: bool,
     horizontal_flip: bool, mosaic_prob: float, mixup_prob: float
-):  
+):
     # Polarization difference
     if polarization:
         num_channels = 4
