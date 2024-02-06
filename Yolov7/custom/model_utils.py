@@ -168,5 +168,5 @@ coco_labels = [
     'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
     'hair drier', 'toothbrush']
 
-label2idx = {label: i for i, label in enumerate(coco_labels)}
-idx2label = {i: label for i, label in enumerate(coco_labels)}
+coco_label2idx = {label: i for i, label in enumerate(coco_labels)}
+coco_idx2label = {i: label for i, label in enumerate(coco_labels)}
