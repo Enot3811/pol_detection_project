@@ -4,15 +4,15 @@ from pathlib import Path
 import sys
 import csv
 
-import tqdm
+from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).parents[3]))
 from Yolov7.custom.datasets import TankDetectionDataset
 
 
-def write_csv_from_dataset(dset_pth: Path):
+def write_csv_from_dataset(dset_pth: Path, polarization: bool):
     """Транслировать аннотации TankDetectionDataset в csv формат из блога."""
-    dset = TankDetectionDataset(dset_pth)
+    dset = TankDetectionDataset(dset_pth, polarization=polarization)
     csv_frame = [['image', 'xmin', 'ymin', 'xmax', 'ymax']]
     for sample in tqdm(dset):
         image, bboxes, classes, img_id, shape = sample
@@ -31,9 +31,11 @@ def write_csv_from_dataset(dset_pth: Path):
 
 def main(**kwargs):
     dset_dir = kwargs['dset_dir']
-    write_csv_from_dataset(dset_dir)
+    polarization = kwargs['polarization']
+    write_csv_from_dataset(dset_dir, polarization)
 
 
 if __name__ == '__main__':
-    dset_dir = Path('data/union_tank_dataset')
-    main(dset_dir=dset_dir)
+    dset_dir = Path('data/fire_smoke/rf_smoke_wildfire_v11/val')
+    polarization = False
+    main(dset_dir=dset_dir, polarization=polarization)
