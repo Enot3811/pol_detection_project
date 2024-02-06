@@ -17,6 +17,7 @@ from torchvision.ops import box_convert
 from torchmetrics import Metric
 from torchmetrics.detection import MeanAveragePrecision
 from tqdm import tqdm
+import albumentations as A
 
 sys.path.append(str(Path(__file__).parents[3]))
 from Yolov7.yolov7.dataset import (
@@ -112,9 +113,18 @@ def main(**kwargs):
     # Get transforms
     post_mosaic_transforms = create_post_mosaic_transform(
         config['input_size'], config['input_size'], pad_colour=pad_colour)
+    
+    if config['random_crop']:
+        training_transforms = [
+            A.RandomCropFromBorders(crop_left=0.4, crop_right=0.4,
+                                    crop_top=0.4, crop_bottom=0.4),
+            A.HorizontalFlip()
+        ]
+    else:
+        training_transforms = [A.HorizontalFlip()]
     yolo_train_transforms = create_yolov7_transforms(
         (config['input_size'], config['input_size']), training=True,
-        pad_colour=pad_colour)
+        pad_colour=pad_colour, training_transforms=training_transforms)
     yolo_val_transforms = create_yolov7_transforms(
         (config['input_size'], config['input_size']), training=False,
         pad_colour=pad_colour)
@@ -148,9 +158,9 @@ def main(**kwargs):
         pad_colour=pad_colour,
         post_mosaic_transforms=post_mosaic_transforms)
     
-    if config['pretrained']:
-        # disable mosaic if finetuning
-        mosaic_mixup_dset.disable()
+    # if config['pretrained']:
+    #     # disable mosaic if finetuning
+    #     mosaic_mixup_dset.disable()
     
     train_yolo_dset = Yolov7Dataset(mosaic_mixup_dset, yolo_train_transforms)
     val_yolo_dset = Yolov7Dataset(val_dset, yolo_val_transforms)
