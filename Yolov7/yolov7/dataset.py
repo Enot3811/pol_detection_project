@@ -30,7 +30,8 @@ def create_yolov7_transforms(
     image_size=(640, 640),
     training=False,
     training_transforms=(A.HorizontalFlip(p=0.5),),
-    pad_colour=(114, 114, 114)
+    pad_colour=(114, 114, 114),
+    min_visibility=0.15
 ):
     transforms = [
         A.LongestMaxSize(max(image_size)),
@@ -43,11 +44,14 @@ def create_yolov7_transforms(
     ]
 
     if training:
-        transforms.extend(training_transforms)
+        # Сначала аугментация, потом приведение размера, чтобы было меньше мыла
+        training_transforms.extend(transforms)
+        transforms = training_transforms
 
     return A.Compose(
         transforms,
-        bbox_params=A.BboxParams(format="pascal_voc", label_fields=["labels"]),
+        bbox_params=A.BboxParams(format="pascal_voc", label_fields=["labels"],
+                                 min_visibility=min_visibility),
     )
 
 
@@ -119,7 +123,8 @@ class Yolov7Dataset(Dataset):
 
         try:
             if len(image_id) > 0:
-                image_id_tensor = torch.as_tensor([])
+                # Пусть вернёт хоть какой-то id
+                image_id_tensor = torch.as_tensor([image_id[0]])
 
         except TypeError:
             image_id_tensor = torch.as_tensor(image_id)
