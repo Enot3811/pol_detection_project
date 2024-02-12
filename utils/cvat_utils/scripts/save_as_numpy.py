@@ -26,7 +26,26 @@ class TempSample(BaseObjectDetectionSample):
         new_pth: Path
     ):
         super().__init__(img_pth, img_annots)
-        self.new_pth = new_pth
+        self._new_pth = new_pth
+
+    def get_image_path(self, get_new_pth: bool = True) -> Path:
+        """Overridden path getter that can return new path instead of origin.
+
+        Parameters
+        ----------
+        get_new_pth : bool, optional
+            Whether to return new path instead of original.
+            By default is `True`.
+
+        Returns
+        -------
+        Path
+            New or original image's path.
+        """
+        if get_new_pth:
+            return self._new_pth
+        else:
+            return self._img_pth
 
 
 def main(**kwargs):
@@ -62,8 +81,8 @@ def main(**kwargs):
         new_annots_pth, samples, 'train', dset.get_labels(), verbose=True)
     # Convert images
     for sample in tqdm(samples, 'Images converting'):
-        src_pth = sample.get_image_path()
-        dst_pth = sample.new_pth
+        src_pth = sample.get_image_path(get_new_pth=False)
+        dst_pth = sample.get_image_path(get_new_pth=True)
         np.save(dst_pth, read_image(src_pth))
 
 
