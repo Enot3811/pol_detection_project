@@ -62,8 +62,8 @@ def main(**kwargs):
         new_annots_pth, samples, 'train', dset.get_labels(), verbose=True)
     # Convert images
     for sample in tqdm(samples, 'Images converting'):
-        src_pth = sample.get_image_path(new_pth=False)
-        dst_pth = sample.get_image_path(new_pth=True)
+        src_pth = sample.get_image_path()
+        dst_pth = sample.new_pth
         np.save(dst_pth, read_image(src_pth))
 
 
@@ -76,10 +76,10 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         'dataset_dir', type=Path,
-        help='Paths to CVAT datasets to merge.')
+        help='Paths to CVAT dataset to convert.')
     parser.add_argument(
         'save_dir', type=Path,
-        help='A path to save the new CVAT dataset.')
+        help='Path to save converted CVAT dataset.')
     args = parser.parse_args()
     return args
 
