@@ -94,12 +94,12 @@ def show_image_plt(
 def show_images_cv2(
     images: Union[NDArray, List[NDArray]],
     window_title: Union[str, List[str]] = 'image',
-    destroy_windows: bool = False
+    destroy_windows: bool = True
 ) -> int:
-    # TODO добавить в junkyard, если посчитаю её полезной
     """Display one or a few images by cv2.
 
-    Press any key to close window.
+    Press any key to return from function. Key's code will be returned.
+    If `destroy_windows` is `True` then windows will be closed.
 
     Parameters
     ----------
@@ -109,14 +109,13 @@ def show_images_cv2(
         Image window's title. If List is provided it must have the same length
         as the list of images.
     destroy_windows : bool
-        Whether to destroy windows.
+        Whether to close windows after function's end.
 
     Returns
     -------
     int
         Pressed key code.
     """
-    key_code = 27  # esc by default
     try:
         if isinstance(images, (List, tuple)):
             if isinstance(window_title, str):
@@ -135,8 +134,8 @@ def show_images_cv2(
                     title = window_title[i]
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
                 cv2.imshow(title, image)
-        elif isinstance(images, NDArray):
-            images = cv2.cvtColor(images, cv2.COLOR_BAYER_RG2BGR)
+        elif isinstance(images, np.ndarray):
+            images = cv2.cvtColor(images, cv2.COLOR_RGB2BGR)
             cv2.imshow(window_title, images)
         else:
             raise TypeError('"images" must be NDArray or List of NDArrays, '
@@ -145,6 +144,7 @@ def show_images_cv2(
         if destroy_windows:
             cv2.destroyAllWindows
     except KeyboardInterrupt:
+        # Free cv2 windows if interrupted
         cv2.destroyAllWindows()
     return key_code
 
@@ -155,7 +155,7 @@ def normalize_to_image(values: NDArray) -> NDArray:
     Parameters
     ----------
     values : NDArray
-        The array with unnormalized values.
+        The array with float values in range [0.0, 1.0].
 
     Returns
     -------
