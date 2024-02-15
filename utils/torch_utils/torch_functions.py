@@ -39,7 +39,7 @@ def image_tensor_to_numpy(tensor: Tensor) -> NDArray:
 
 def draw_bounding_boxes(
     image: NDArray,
-    bboxes: List[List[Union[float, int]]],
+    bboxes: List[Bbox],
     class_labels: List[Union[str, int, float]] = None,
     confidences: List[float] = None,
     bbox_format: str = 'xyxy',
@@ -53,7 +53,7 @@ def draw_bounding_boxes(
     ----------
     image : NDArray
         The given image with shape `(h, w, c)`.
-    bboxes : List[List[Union[float, int]]]
+    bboxes : List[Bbox]
         The bounding boxes with shape `(n_boxes, 4)`.
     class_labels : List, optional
         Bounding boxes' labels. By default is None.
@@ -100,7 +100,7 @@ def draw_bounding_boxes(
             continue
 
         # Draw bbox
-        bbox = list(map(int, bbox))
+        bbox = list(map(int, bbox))  # convert float bbox to int if needed
         x1, y1, x2, y2 = bbox
         cv2.rectangle(image, (x1, y1), (x2, y2),
                       color=color, thickness=line_width)
