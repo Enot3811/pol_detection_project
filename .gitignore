@@ -10,7 +10,6 @@ other/*
 # Pycache
 __pycache__*
 *.pyc
-*_.py
 
 # Model checkpoints
 *.pt
