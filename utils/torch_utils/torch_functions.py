@@ -3,10 +3,17 @@
 
 from typing import List, Tuple, Union
 
+import numpy as np
 from numpy.typing import NDArray
 import cv2
+import torch
 from torch import Tensor, tensor
 from torchvision.ops import box_convert
+
+
+IntBbox = Tuple[int, int, int, int]
+FloatBbox = Tuple[float, float, float, float]
+Bbox = Union[IntBbox, FloatBbox]
 
 
 def image_tensor_to_numpy(tensor: Tensor) -> NDArray:
@@ -109,3 +116,72 @@ def draw_bounding_boxes(
             cv2.putText(image, put_text, (x1, y1 - 2), 0, 0.3,
                         color, 1)
     return image
+
+
+def random_crop(
+    image: Union[Tensor, NDArray],
+    min_crop_x: int, max_crop_x: int,
+    min_crop_y: int, max_crop_y: int,
+    return_position: bool = False
+) -> Union[Tensor, NDArray, Tuple[Tensor, IntBbox], Tuple[NDArray, IntBbox]]:
+    """Make random crop from a given image.
+
+    The size of the crop region size is in ranges `(min_crop_x, max_crop_x)`
+    and `(min_crop_y, max_crop_y)`.
+
+    Parameters
+    ----------
+    image : Union[Tensor, NDArray]
+        The given image for crop with shape `(c, h w)` for `Tensor` type and
+        `(h, w, c)` for `NDArray`. `Image` can be a batch of images with shape
+        `(b, c, h, w)` or `(b, h, w, c)` depending on its type.
+    min_crop_x : int
+        Minimum width bound for crop.
+    max_crop_x : int
+        Maximum width bound for crop.
+    min_crop_y : int
+        Minimum height bound for crop.
+    max_crop_y : int
+        Maximum height bound for crop.
+    return_position : bool, optional
+        Whether to return bounding box of made crop. By default is `False`.
+
+    Returns
+    -------
+    Union[Tensor, NDArray, Tuple[Tensor, Bbox], Tuple[NDArray, Bbox]]
+        The crop region in the same type as the original image and it's
+        bounding box if `return_position` is `True`.
+    """
+    if len(image.shape) not in {3, 4}:
+        raise ValueError(
+            'Image must be 3-d for one instance and 4-d for a batch,'
+            f'but its shape is {image.shape}.')
+    if isinstance(image, Tensor):
+        randint = torch.randint
+        crop_dims = (-2, -1)
+    elif isinstance(image, np.ndarray):
+        randint = np.random.randint
+        crop_dims = (-3, -2)
+    else:
+        raise ValueError(
+            'Image must be either "torch.Tensor" or "numpy.ndarray"'
+            f'but it is {type(image)}.')
+    h = image.shape[crop_dims[0]]
+    w = image.shape[crop_dims[1]]
+    # Get random size of crop
+    x_size = randint(min_crop_x, max_crop_x + 1, ())
+    y_size = randint(min_crop_y, max_crop_y + 1, ())
+    # Get random window
+    x_min = randint(0, w - x_size + 1, ())
+    y_min = randint(0, h - y_size + 1, ())
+    x_max = x_min + x_size
+    y_max = y_min + y_size
+    # Crop the window
+    crop_indexes = [slice(None)] * len(image.shape)
+    crop_indexes[crop_dims[0]] = slice(y_min, y_max)
+    crop_indexes[crop_dims[1]] = slice(x_min, x_max)
+    cropped = image[tuple(crop_indexes)]
+    if return_position:
+        return cropped, (x_min, y_min, x_max, y_max)
+    else:
+        return cropped
