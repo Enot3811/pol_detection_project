@@ -1,4 +1,4 @@
-"""A torch general object detection dataset."""
+"""A torch general object detection dataset based on CVAT dataset."""
 
 
 from pathlib import Path
@@ -12,8 +12,8 @@ from utils.image_utils.image_functions import read_image
 from utils.cvat_utils.cvat_datasets import CvatObjectDetectionDataset
 
 
-class ObjectDetectionDataset(Dataset):
-    """A torch general object detection dataset."""
+class TorchCvatObjectDetectionDataset(Dataset):
+    """A torch general object detection dataset based on CVAT dataset."""
 
     def __init__(
         self,

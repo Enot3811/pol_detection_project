@@ -7,11 +7,11 @@ from typing import Dict, Union, Callable, Tuple, List
 import numpy as np
 from numpy.typing import NDArray
 
-from utils.torch_utils.datasets import ObjectDetectionDataset
+from utils.torch_utils.datasets import TorchCvatObjectDetectionDataset
 from mako_camera.cameras_utils import split_raw_pol
 
 
-class TankDetectionDataset(ObjectDetectionDataset):
+class TankDetectionDataset(TorchCvatObjectDetectionDataset):
     """Tanks object detection dataset for yolo project.
 
     This dataset is used as a connection between base torch object detection
