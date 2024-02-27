@@ -188,3 +188,30 @@ def save_image(img: NDArray, path: Union[Path, str]) -> None:
     success = cv2.imwrite(str(path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
     if not success:
         raise RuntimeError('Could not save image.')
+    
+
+def collect_images_paths(
+    image_dir: Union[str, Path],
+    image_extensions: Tuple[str] = ('jpg', 'JPG', 'jpeg', 'png', 'PNG', 'bmp')
+) -> List[Path]:
+    """Collect all images paths from given directory.
+
+    Collector can be configured with `image_extensions` argument.
+
+    Parameters
+    ----------
+    image_dir : Union[str, Path]
+        Directory from which image paths will be collected.
+    image_extensions : Tuple[str], optional
+        Extension of collecting images.
+        By default is `('jpg', 'JPG', 'jpeg', 'png', 'PNG', 'bmp')`.
+
+    Returns
+    -------
+    List[Path]
+        Collected image paths.
+    """
+    paths: List[Path] = []
+    for ext in image_extensions:
+        paths.extend(image_dir.glob(f'*.{ext}'))
+    return paths

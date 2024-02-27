@@ -8,7 +8,7 @@ import torch
 from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).parents[3]))
-from utils.image_utils.image_functions import read_image
+from utils.image_utils.image_functions import read_image, collect_images_paths
 
 
 def main(**kwargs):
@@ -23,10 +23,7 @@ def main(**kwargs):
     else:
         device: torch.device = torch.device(device)
 
-    img_ext = ('jpg', 'png', 'JPG', 'PNG')
-    pths = []
-    for ext in img_ext:
-        pths += list(image_dir.glob(f'*.{ext}'))
+    pths = collect_images_paths(image_dir)
 
     means = torch.empty((len(pths), 3), dtype=torch.float32, device=device)
     stds = torch.empty((len(pths), 3), dtype=torch.float32, device=device)

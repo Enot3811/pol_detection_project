@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 
 sys.path.append(str(Path(__file__).parents[3]))
-from utils.image_utils.image_functions import read_image
+from utils.image_utils.image_functions import read_image, collect_images_paths
 from utils.torch_utils.torch_functions import draw_bounding_boxes
 from Yolov7.yolov7.dataset import create_yolov7_transforms
 from Yolov7.custom.model_utils import load_yolo_checkpoint, yolo_inference
@@ -59,14 +59,12 @@ def main(samples_pth: Path, config_pth: Path, conf_thresh: float,
 
     # Получить все пути
     if samples_pth.is_dir():
-        samples_pths = []
-        # RGB
+        # Pol
         if config['polarization']:
             samples_pths = list(samples_pth.glob('*.npy'))
-        # Pol
+        # RGB
         else:
-            for ext in ('jpg', 'JPG', 'png', 'PNG'):
-                samples_pths += list(samples_pth.glob(f'*.{ext}'))
+            samples_pths = collect_images_paths(samples_pth)
     elif samples_pth.is_file():
         samples_pths = [samples_pth]
     else:
