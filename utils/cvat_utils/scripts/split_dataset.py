@@ -1,4 +1,4 @@
-"""Merge several object detection CVAT datasets into one."""
+"""Split CVAT object detection dataset into several subsets."""
 
 
 import argparse
