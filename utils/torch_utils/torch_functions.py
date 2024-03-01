@@ -35,6 +35,27 @@ def image_tensor_to_numpy(tensor: Tensor) -> NDArray:
         return tensor.detach().cpu().permute(0, 2, 3, 1).numpy()
     elif len(tensor.shape) == 2:
         return tensor.detach().cpu().numpy()
+    
+
+def image_numpy_to_tensor(array: NDArray) -> Tensor:
+    """Convert an image or a batch of images from ndarray to tensor.
+
+    Parameters
+    ----------
+    array : NDArray
+        The array with shape `(h, w)`, `(h, w, c)` or `(b, h, w, c)`.
+
+    Returns
+    -------
+    Tensor
+        The tensor with shape `(h, w)`, `(c, h, w)` or `(b, c, h, w)`.
+    """
+    if len(array.shape) == 3:
+        return torch.tensor(array.transpose(2, 0, 1))
+    elif len(array.shape) == 4:
+        return torch.tensor(array.transpose(0, 3, 1, 2))
+    elif len(array.shape) == 2:
+        return torch.tensor(array)
 
 
 def draw_bounding_boxes(
