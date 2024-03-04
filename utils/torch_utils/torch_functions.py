@@ -1,13 +1,14 @@
 """A module containing some helpful functions working with Torch."""
 
 
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Dict
 
 import numpy as np
 from numpy.typing import NDArray
 import cv2
 import torch
 from torch import Tensor, tensor
+from torch.nn import Module
 from torchvision.ops import box_convert
 
 
@@ -206,3 +207,49 @@ def random_crop(
         return cropped, (x_min, y_min, x_max, y_max)
     else:
         return cropped
+    
+
+def make_compatible_state_dict(
+    model: Module, state_dict: Dict[str, Tensor],
+    return_discarded: bool = False
+) -> Union[Dict[str, Tensor], Tuple[Dict[str, Tensor], Dict[str, Tensor]]]:
+    """Discard model-incompatible weights from `state_dict`.
+
+    Weights that are not represented in the model
+    or that are not size-compatible to the model's parameters will be
+    discarded from the `state_dict`.
+
+    Parameters
+    ----------
+    model : Module
+        The model for which to combine `state_dict`.
+    state_dict : Dict[str, Tensor]
+        The dict of parameters to make compatible.
+    return_discarded : bool, optional
+        Whether to return discarded parameters. By default is `False`.
+
+    Returns
+    -------
+    Union[Dict[str, Tensor], Tuple[Dict[str, Tensor], Dict[str, Tensor]]]
+        Compatible state dict and dict containing discarded parameters
+        if `return_discarded` is `True`.
+    """
+    model_state_dict = model.state_dict()
+    if return_discarded:
+        discarded_parameters = {}
+    keys = list(state_dict.keys())
+    for k in keys:
+        if k in model_state_dict:
+            if state_dict[k].shape != model_state_dict[k].shape:
+                discarded_param = state_dict.pop(k)
+                if return_discarded:
+                    discarded_parameters[k] = discarded_param
+        else:
+            discarded_param = state_dict.pop(k)
+            if return_discarded:
+                discarded_parameters[k] = discarded_param
+
+    if return_discarded:
+        return state_dict, discarded_parameters
+    else:
+        return state_dict
