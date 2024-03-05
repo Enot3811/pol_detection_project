@@ -1,0 +1,31 @@
+{
+    "random_seed": 42,
+
+    "continue_training": false,
+    "device": "cuda",
+    "lr": 0.001,
+    "weight_decay": 0.005,
+    "n_epoch": 100,
+    "work_dir": "region_localizer/work_dir/retina_localizer_2",
+
+    "architecture": "modified_retina",
+    "pretrained": false,
+    "num_classes": 1,
+
+    "dataset": "data/satellite_dataset/dataset",
+    "dataset_type": "region_dataset",
+    "train_dataset_params": {
+        "min_crop_size": [492, 492],
+        "max_crop_size": [1232, 1232],
+        "result_size": [1024, 1024]
+    },
+    "val_dataset_params": {
+        "min_crop_size": [492, 492],
+        "max_crop_size": [1232, 1232],
+        "result_size": [1024, 1024]
+    },
+    "batch_size": 3,
+    "rotation": true,
+    "shuffle_train": true,
+    "shuffle_val": false
+}
