@@ -11,10 +11,19 @@ other/*
 __pycache__*
 *.pyc
 
+# Temporary file
+_.py
+
 # Model checkpoints
 *.pt
 *.pth
 
+# Tensorboard
+*events.out.tfevents*
+
 # Images
 *.png
 *.jpg
+
+# ultralytics
+runs/**
