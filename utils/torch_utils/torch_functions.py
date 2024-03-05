@@ -36,7 +36,7 @@ def image_tensor_to_numpy(tensor: Tensor) -> NDArray:
         return tensor.detach().cpu().permute(0, 2, 3, 1).numpy()
     elif len(tensor.shape) == 2:
         return tensor.detach().cpu().numpy()
-    
+
 
 def image_numpy_to_tensor(array: NDArray) -> Tensor:
     """Convert an image or a batch of images from ndarray to tensor.
@@ -142,14 +142,16 @@ def draw_bounding_boxes(
 
 def random_crop(
     image: Union[Tensor, NDArray],
-    min_crop_x: int, max_crop_x: int,
-    min_crop_y: int, max_crop_y: int,
+    min_size: Union[int, Tuple[int, int]],
+    max_size: Union[int, Tuple[int, int]],
     return_position: bool = False
 ) -> Union[Tensor, NDArray, Tuple[Tensor, IntBbox], Tuple[NDArray, IntBbox]]:
     """Make random crop from a given image.
 
-    The size of the crop region size is in ranges `(min_crop_x, max_crop_x)`
-    and `(min_crop_y, max_crop_y)`.
+    If `min_size` is `int` then the crop will be a square with shape belonging
+    to the range from `(min_size, min_size)` to `(max_size, max_size)`.
+    If `min_size` is `tuple` then the crop will be a rectangle with shape
+    belonging to the range from `min_size` to `max_size`.
 
     Parameters
     ----------
@@ -157,26 +159,33 @@ def random_crop(
         The given image for crop with shape `(c, h w)` for `Tensor` type and
         `(h, w, c)` for `NDArray`. `Image` can be a batch of images with shape
         `(b, c, h, w)` or `(b, h, w, c)` depending on its type.
-    min_crop_x : int
-        Minimum width bound for crop.
-    max_crop_x : int
-        Maximum width bound for crop.
-    min_crop_y : int
-        Minimum height bound for crop.
-    max_crop_y : int
-        Maximum height bound for crop.
+    min_size : Union[int, Tuple[int, int]]
+        Minimum size of crop. It should be either min size of square as `int`
+        or min size of rectangle as `tuple` in format `(h, w)`.
+    max_size : Union[int, Tuple[int, int]]
+        Maximum size of crop. It should be either max size of square as `int`
+        or max size of rectangle as `tuple` in format `(h, w)`.
     return_position : bool, optional
         Whether to return bounding box of made crop. By default is `False`.
 
     Returns
     -------
-    Union[Tensor, NDArray, Tuple[Tensor, Bbox], Tuple[NDArray, Bbox]]
+    Union[Tensor, NDArray, Tuple[Tensor, IntBbox], Tuple[NDArray, IntBbox]]
         The crop region in the same type as the original image and it's
         bounding box if `return_position` is `True`.
+
+    Raises
+    ------
+    ValueError
+        "image" must be 3-d for one instance and 4-d for a batch.
+    ValueError
+        "image" must be either "torch.Tensor" or "numpy.ndarray".
+    TypeError
+        "min_size" must be int or Tuple[int, int].
     """
     if len(image.shape) not in {3, 4}:
         raise ValueError(
-            'Image must be 3-d for one instance and 4-d for a batch,'
+            '"image" must be 3-d for one instance and 4-d for a batch,'
             f'but its shape is {image.shape}.')
     if isinstance(image, Tensor):
         randint = torch.randint
@@ -186,13 +195,19 @@ def random_crop(
         crop_dims = (-3, -2)
     else:
         raise ValueError(
-            'Image must be either "torch.Tensor" or "numpy.ndarray"'
+            '"image" must be either "torch.Tensor" or "numpy.ndarray"'
             f'but it is {type(image)}.')
     h = image.shape[crop_dims[0]]
     w = image.shape[crop_dims[1]]
     # Get random size of crop
-    x_size = randint(min_crop_x, max_crop_x + 1, ())
-    y_size = randint(min_crop_y, max_crop_y + 1, ())
+    if isinstance(min_size, int):
+        x_size = y_size = randint(min_size, max_size + 1, ())
+    elif isinstance(min_size, tuple) and len(min_size) == 2:
+        y_size = randint(min_size[0], max_size[0] + 1, ())
+        x_size = randint(min_size[1], max_size[1] + 1, ())
+    else:
+        raise TypeError('"min_size" must be int or Tuple[int, int] '
+                        f'but it is {type(min_size)}.')
     # Get random window
     x_min = randint(0, w - x_size + 1, ())
     y_min = randint(0, h - y_size + 1, ())
