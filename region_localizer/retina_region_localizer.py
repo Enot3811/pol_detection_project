@@ -68,25 +68,26 @@ class RetinaRegionLocalizer(nn.Module):
 
 
 if __name__ == '__main__':
-    min_size = 2048
-    max_size = 2048
+    img_size = 1024
     b = 2
-    model = RetinaRegionLocalizer(img_min_size=min_size, img_max_size=max_size)
+    pretrained = True
+    model = RetinaRegionLocalizer(
+        img_min_size=img_size, img_max_size=img_size, pretrained=pretrained)
 
-    dummy_map = torch.rand((b, 3, 2048, 2048))
+    dummy_map = torch.rand((b, 3, img_size, img_size))
     dummy_map = torch.unbind(dummy_map)
-    dummy_piece = torch.rand((b, 3, 2048, 2048))
+    dummy_piece = torch.rand((b, 3, img_size, img_size))
     dummy_piece = torch.unbind(dummy_piece)
     dummy_targets = [
-        {'boxes': torch.tensor([[50, 1000, 100, 2000],
-                                [500, 800, 1000, 1200]]),
+        {'boxes': torch.tensor([[50, 500, 100, 1000],
+                                [200, 400, 500, 600]]),
          'labels': torch.tensor([1, 1], dtype=torch.int64)}
         for _ in range(b)]
 
     print(model)
     model.train()
-    loss = model(dummy_map, dummy_piece, dummy_targets)
+    loss, predicts = model(dummy_map, dummy_piece, dummy_targets)
     print(loss)
     model.eval()
-    predict = model(dummy_map, dummy_piece)
+    loss, predict = model(dummy_map, dummy_piece, dummy_targets)
     print(predict)
