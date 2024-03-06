@@ -20,7 +20,7 @@ import albumentations as A
 sys.path.append(str(Path(__file__).parents[1]))
 from region_localizer.retina_region_localizer import RetinaRegionLocalizer
 from region_localizer.datasets import RegionDataset, RegionDatasetV2
-from region_localizer.modified_retina_v2 import create_modified_retina_v2
+from region_localizer.modified_retina_v2 import ModifiedRetinaV2
 
 
 class LossMetric(Metric):
@@ -86,8 +86,8 @@ def main(config_pth: Path):
     log_writer = SummaryWriter(str(tensorboard_dir))
 
     # Get datasets and loaders
-    train_dir = Path(config['dataset']) / 'test'
-    val_dir = Path(config['dataset']) / 'test'
+    train_dir = Path(config['dataset']) / 'train'
+    val_dir = Path(config['dataset']) / 'val'
 
     if config['rotation']:
         transforms = A.Compose([
@@ -122,12 +122,12 @@ def main(config_pth: Path):
     # Get the model
     if config['architecture'] == 'modified_retina':
         model = RetinaRegionLocalizer(
-            img_min_size=config['train_dataset_params']['min_crop_size'][0],
-            img_max_size=config['train_dataset_params']['max_crop_size'][0],
+            img_min_size=config['train_dataset_params']['result_size'][0],
+            img_max_size=config['train_dataset_params']['result_size'][0],
             pretrained=config['pretrained'],
             num_classes=config['num_classes'])
     elif config['architecture'] == 'modified_retina_v2':
-        model = create_modified_retina_v2(
+        model = ModifiedRetinaV2.create_modified_retina(
             min_size=config['train_dataset_params']['result_size'][0],
             max_size=config['train_dataset_params']['result_size'][0],
             pretrained=config['pretrained'],
@@ -229,19 +229,40 @@ def main(config_pth: Path):
         # Log epoch metrics
         train_cls_loss = train_cls_loss_metric.compute()
         train_reg_loss = train_reg_loss_metric.compute()
+        train_iou = train_iou_metric.compute()
+        val_cls_loss = val_cls_loss_metric.compute()
+        val_reg_loss = val_reg_loss_metric.compute()
         val_iou = val_iou_metric.compute()
 
         train_cls_loss_metric.reset()
         train_reg_loss_metric.reset()
+        train_iou_metric.reset()
+        val_cls_loss_metric.reset()
+        val_reg_loss_metric.reset()
         val_iou_metric.reset()
 
-        log_writer.add_scalar('train_cls_loss', train_cls_loss, epoch)
-        log_writer.add_scalar('train_reg_loss', train_reg_loss, epoch)
-        log_writer.add_scalar('val_iou', val_iou['iou'], epoch)
+        log_writer.add_scalars('cls_loss', {
+            'train': train_cls_loss,
+            'val': val_cls_loss
+        }, epoch)
+        log_writer.add_scalars('reg_loss', {
+            'train': train_reg_loss,
+            'val': val_reg_loss
+        }, epoch)
+        log_writer.add_scalars('iou', {
+            'train': train_iou['iou'],
+            'val': val_iou['iou']
+        }, epoch)
+        log_writer.add_scalar('lr', lr, epoch)
 
-        print('TrainClsLoss:', train_cls_loss.item())
-        print('TrainRegLoss:', train_reg_loss.item())
-        print('Val_IoU:', val_iou['iou'].item())
+        print('Train metrics:')
+        print('ClsLoss:', train_cls_loss.item())
+        print('RegLoss:', train_reg_loss.item())
+        print('IoU:', train_iou['iou'].item())
+        print('Val metrics:')
+        print('ClsLoss:', val_cls_loss.item())
+        print('RegLoss:', val_reg_loss.item())
+        print('IoU:', val_iou['iou'].item())
         print('Lr:', lr)
 
         # Save model
@@ -253,7 +274,7 @@ def main(config_pth: Path):
         }
         torch.save(checkpoint, ckpt_dir / 'last_checkpoint.pth')
 
-        sum_loss = train_cls_loss.item() + train_reg_loss.item()
+        sum_loss = val_cls_loss.item() + val_reg_loss.item()
         if (best_metric is None or best_metric < sum_loss):
             torch.save(checkpoint, ckpt_dir / 'best_checkpoint.pth')
             best_metric = sum_loss
