@@ -202,7 +202,7 @@ def random_crop(
     # Get random size of crop
     if isinstance(min_size, int):
         x_size = y_size = randint(min_size, max_size + 1, ())
-    elif isinstance(min_size, tuple) and len(min_size) == 2:
+    elif isinstance(min_size, (tuple, list)) and len(min_size) == 2:
         y_size = randint(min_size[0], max_size[0] + 1, ())
         x_size = randint(min_size[1], max_size[1] + 1, ())
     else:
