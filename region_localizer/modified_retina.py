@@ -1,6 +1,5 @@
-from typing import Optional, Callable, List, Dict, Tuple, Union
+from typing import Optional, Callable, List, Dict, Tuple
 from collections import OrderedDict
-import warnings
 import sys
 from pathlib import Path
 
@@ -115,7 +114,6 @@ class ModifiedRetinaHead(RetinaNetHead):
 
         Instead of making predict based on logits from one image it gets two
         different image's logits and combine them by Attention layer.
-        TODO дописать подробнее, когда будет готово
 
         Parameters
         ----------
@@ -124,7 +122,7 @@ class ModifiedRetinaHead(RetinaNetHead):
             backbone output feature maps. Each element has shape
             `(b, backbone_out_ch, h_map, w_map)`.
         piece_logits : List[Tensor]
-            Logits from local piece image.
+            Logits from local piece image with shape `(1, backbone_out_ch)`.
 
         Returns
         -------
@@ -150,7 +148,7 @@ class ModifiedRetina(RetinaNet):
     def forward(
         self, map_images: List[FloatTensor], pieces_logits: FloatTensor,
         map_targets: List[Dict[str, Tensor]] = None
-    ) -> Union[List[Tensor], Dict[str, Tensor]]:
+    ) -> Tuple[Dict[str, Tensor], List[Dict[str, Tensor]]]:
         """Forward pass of `ModifiedRetina`.
 
         Parameters
@@ -164,8 +162,8 @@ class ModifiedRetina(RetinaNet):
 
         Returns
         -------
-        Union[List[Tensor], Dict[str, Tensor]]
-            TODO
+        Tuple[Dict[str, Tensor], List[Dict[str, Tensor]]]
+            Dict with losses and predictions with boxes, scores and labels.
         """
         if self.training:
             if map_targets is None:
@@ -227,45 +225,37 @@ class ModifiedRetina(RetinaNet):
 
         losses = {}
         detections: List[Dict[str, Tensor]] = []
-        if self.training:
-            if map_targets is None:
-                raise ValueError(
-                    'Targets should not be none when in training mode')
-            else:
-                # compute the losses
-                losses = self.compute_loss(map_targets, head_outputs, anchors)
-        else:
-            # recover level sizes
-            num_anchors_per_level = [x.size(2) * x.size(3) for x in features]
-            HW = 0
-            for v in num_anchors_per_level:
-                HW += v
-            HWA = head_outputs["cls_logits"].size(1)
-            A = HWA // HW
-            num_anchors_per_level = [hw * A for hw in num_anchors_per_level]
+        #######################################################################
+        # Changed
+        if map_targets is not None:
+            # compute the losses
+            losses = self.compute_loss(map_targets, head_outputs, anchors)
 
-            # split outputs per level
-            split_head_outputs: Dict[str, List[Tensor]] = {}
-            for k in head_outputs:
-                split_head_outputs[k] = list(head_outputs[k].split(
-                    num_anchors_per_level, dim=1))
-            split_anchors = [list(a.split(num_anchors_per_level))
-                             for a in anchors]
+        # recover level sizes
+        num_anchors_per_level = [x.size(2) * x.size(3) for x in features]
+        HW = 0
+        for v in num_anchors_per_level:
+            HW += v
+        HWA = head_outputs["cls_logits"].size(1)
+        A = HWA // HW
+        num_anchors_per_level = [hw * A for hw in num_anchors_per_level]
 
-            # compute the detections
-            detections = self.postprocess_detections(
-                split_head_outputs, split_anchors, map_images.image_sizes)
-            detections = self.transform.postprocess(
-                detections, map_images.image_sizes, original_image_sizes)
+        # split outputs per level
+        split_head_outputs: Dict[str, List[Tensor]] = {}
+        for k in head_outputs:
+            split_head_outputs[k] = list(head_outputs[k].split(
+                num_anchors_per_level, dim=1))
+        split_anchors = [list(a.split(num_anchors_per_level))
+                         for a in anchors]
 
-        if torch.jit.is_scripting():
-            if not self._has_warned:
-                warnings.warn(
-                    'RetinaNet always returns a (Losses, Detections) '
-                    'tuple in scripting')
-                self._has_warned = True
-            return losses, detections
-        return self.eager_outputs(losses, detections)
+        # compute the detections
+        detections = self.postprocess_detections(
+            split_head_outputs, split_anchors, map_images.image_sizes)
+        detections = self.transform.postprocess(
+            detections, map_images.image_sizes, original_image_sizes)
+
+        return losses, detections
+        #######################################################################
 
     @staticmethod
     def create_modified_retina(

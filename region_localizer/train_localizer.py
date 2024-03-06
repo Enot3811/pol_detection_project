@@ -86,12 +86,16 @@ def main(config_pth: Path):
     log_writer = SummaryWriter(str(tensorboard_dir))
 
     # Get datasets and loaders
-    train_dir = Path(config['dataset']) / 'train'
-    val_dir = Path(config['dataset']) / 'val'
+    train_dir = Path(config['dataset']) / 'test'
+    val_dir = Path(config['dataset']) / 'test'
 
-    transforms = A.Compose([
-        A.RandomRotate90(always_apply=True)
-    ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
+    if config['rotation']:
+        transforms = A.Compose([
+            A.RandomRotate90(always_apply=True)
+        ], bbox_params=A.BboxParams(format='pascal_voc',
+                                    label_fields=['labels']))
+    else:
+        transforms = None
 
     if config['dataset_type'] == 'region_dataset':
         dataset_cls = RegionDataset
@@ -149,12 +153,12 @@ def main(config_pth: Path):
         lr_scheduler.load_state_dict(lr_params)
     
     # Get metrics
-    val_iou_metric = IntersectionOverUnion()
-    train_cls_loss_metric = LossMetric()
-    train_reg_loss_metric = LossMetric()
-    val_iou_metric.to(device=device)
-    train_cls_loss_metric.to(device=device)
-    train_reg_loss_metric.to(device=device)
+    train_iou_metric = IntersectionOverUnion().to(device=device)
+    val_iou_metric = IntersectionOverUnion().to(device=device)
+    train_cls_loss_metric = LossMetric().to(device=device)
+    train_reg_loss_metric = LossMetric().to(device=device)
+    val_cls_loss_metric = LossMetric().to(device=device)
+    val_reg_loss_metric = LossMetric().to(device=device)
 
     # Do training
     best_metric = None
@@ -164,25 +168,39 @@ def main(config_pth: Path):
 
         # Train epoch
         model.train()
-        step = 0
         for batch in tqdm(train_loader, 'Train step'):
-            # TODO доделать для v1
-            losses = model(*batch)
+            losses, predicts = model(*batch)
             loss = losses['classification'] + losses['bbox_regression']
             loss.backward()
     
             optimizer.step()
             optimizer.zero_grad()
 
+            targets = batch[-1]
+            # Collect only most confident bbox
+            if sum(map(lambda x: x['scores'].numel(), predicts)) != 0:
+                most_confident = []
+                for i in range(len(predicts)):
+                    if predicts[i]['boxes'].numel() != 0:
+                        most_confident.append({
+                            'boxes': predicts[i]['boxes'][0][None, ...],
+                            'scores': predicts[i]['scores'][0][None, ...],
+                            'labels': predicts[i]['labels'][0][None, ...]
+                        })
+                    else:
+                        most_confident.append(predicts[i])
+                train_iou_metric.update(most_confident, targets)
+            else:
+                train_iou_metric.update(predicts, targets)
+
             train_cls_loss_metric.update(losses['classification'])
             train_reg_loss_metric.update(losses['bbox_regression'])
-            step += 1
         
         # Val epoch
         with torch.no_grad():
             model.eval()
             for batch in tqdm(val_loader, 'Val step'):
-                predicts = model(*batch)
+                losses, predicts = model(*batch)
                 targets = batch[-1]
 
                 # Collect only most confident bbox
@@ -200,6 +218,9 @@ def main(config_pth: Path):
                     val_iou_metric.update(most_confident, targets)
                 else:
                     val_iou_metric.update(predicts, targets)
+
+                val_cls_loss_metric.update(losses['classification'])
+                val_reg_loss_metric.update(losses['bbox_regression'])
 
         # Lr scheduler
         lr_scheduler.step()
@@ -250,7 +271,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         'config_pth', type=Path,
         help='Путь к конфигу обучения.')
-    args = parser.parse_args(['region_localizer/configs/test_config.json'])
+    args = parser.parse_args()
 
     if not args.config_pth.exists():
         raise FileNotFoundError('Specified config file does not exists.')
