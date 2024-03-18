@@ -181,7 +181,7 @@ def random_crop(
     ValueError
         "image" must be either "torch.Tensor" or "numpy.ndarray".
     TypeError
-        "min_size" must be int or Tuple[int, int].
+        "min_size" and "max_size" must be int or Tuple[int, int].
     """
     if len(image.shape) not in {3, 4}:
         raise ValueError(
@@ -200,14 +200,16 @@ def random_crop(
     h = image.shape[crop_dims[0]]
     w = image.shape[crop_dims[1]]
     # Get random size of crop
-    if isinstance(min_size, int):
+    if isinstance(min_size, int) and isinstance(max_size, int):
         x_size = y_size = randint(min_size, max_size + 1, ())
-    elif isinstance(min_size, (tuple, list)) and len(min_size) == 2:
+    elif (isinstance(min_size, (tuple, list)) and len(min_size) == 2 and
+          isinstance(max_size, (tuple, list)) and len(max_size) == 2):
         y_size = randint(min_size[0], max_size[0] + 1, ())
         x_size = randint(min_size[1], max_size[1] + 1, ())
     else:
-        raise TypeError('"min_size" must be int or Tuple[int, int] '
-                        f'but it is {type(min_size)}.')
+        raise TypeError(
+            '"min_size" and "max_size" must be int or Tuple[int, int] '
+            f'but it is {min_size} and {max_size}.')
     # Get random window
     x_min = randint(0, w - x_size + 1, ())
     y_min = randint(0, h - y_size + 1, ())
