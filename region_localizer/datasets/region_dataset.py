@@ -20,7 +20,9 @@ class RegionDataset(TorchImageDataset):
         self, image_dir: Union[str, Path],
         min_crop_size: Union[int, Tuple[int, int]],
         max_crop_size: Union[int, Tuple[int, int]],
-        result_size: Tuple[int, int], transforms: Callable = None
+        result_size: Union[int, Tuple[int, int]],
+        transforms: Callable = None,
+        num_classes: int = 2
     ):
         """Initialize `RegionDataset` object.
 
@@ -32,17 +34,23 @@ class RegionDataset(TorchImageDataset):
             Minimum crop size in `int` or `(h, w)` format.
         max_crop_size : Tuple[int, int]
             Maximum crop size in `int` or `(h, w)` format.
-        result_size : Tuple[int, int]
+        result_size : Union[int, Tuple[int, int]]
             Result size that will be used in resize of result images
-            in `(h, w)` format.
+            in `int` or `(h, w)` format.
         transforms : Callable, optional
             Dataset transforms. Its activation can be tune by overriding
             `apply_transforms` method. By default is None.
+        num_classes : int, optional
+            Temporary parameter to let to work with old one class models.
+            By default is `2`.
         """
         super().__init__(image_dir, transforms)
         self.min_crop_size = min_crop_size
         self.max_crop_size = max_crop_size
         self.result_size = result_size
+        self.num_classes = num_classes
+        if isinstance(result_size, int):
+            result_size = (result_size, result_size)
         self.resize_transf = Compose(
             [Resize(*result_size)],
             bbox_params=BboxParams(
@@ -89,9 +97,10 @@ class RegionDataset(TorchImageDataset):
         result_bbox = torch.tensor(
             list(map(int, result_bbox)), dtype=torch.float32)
             
+        label = 0 if self.num_classes == 1 else 1  # temporary label assignment
         targets = {
             'boxes': result_bbox[None, ...],
-            'labels': torch.tensor([1])}  # background - 0, target - 1
+            'labels': torch.tensor([label])}  # background - 0, target - 1
 
         return result_map, result_region, targets
     
