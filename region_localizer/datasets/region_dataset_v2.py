@@ -20,6 +20,7 @@ class RegionDatasetV2(RegionDataset):
         min_crop_size: Union[int, Tuple[int, int]],
         max_crop_size: Union[int, Tuple[int, int]],
         result_size: Tuple[int, int], transforms: Callable = None,
+        num_classes: int = 2,
         num_crops: int = 1
     ):
         """Initialize `RegionDatasetV2` object.
@@ -41,9 +42,13 @@ class RegionDatasetV2(RegionDataset):
         num_crops : int, optional
             How many crops to make and return for one source image.
             By default is `1`.
+        num_classes : int, optional
+            Temporary parameter to let to work with old one class models.
+            By default is `2`.
         """
         super().__init__(
-            image_dir, min_crop_size, max_crop_size, result_size, transforms)
+            image_dir, min_crop_size, max_crop_size, result_size, transforms,
+            num_classes)
         self.num_crops = num_crops
 
     def __getitem__(
@@ -91,6 +96,7 @@ class RegionDatasetV2(RegionDataset):
                       .to(dtype=torch.float32) / 255)
 
         targets = []
+        label = 0 if self.num_classes == 1 else 1  # temporary label assignment
         for i in range(self.num_crops):
             # Iterate over List[ndarray], convert, normalize and concatenate
             # each region with map
@@ -103,7 +109,7 @@ class RegionDatasetV2(RegionDataset):
             targets.append({
                 'boxes': torch.tensor(result_bboxes[i],
                                       dtype=torch.float32)[None, ...],
-                'labels': torch.tensor([1], dtype=torch.int64)
+                'labels': torch.tensor([label], dtype=torch.int64)
             })  # background - 0, target - 1
 
         return result_regions, targets
