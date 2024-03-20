@@ -211,8 +211,8 @@ def random_crop(
             '"min_size" and "max_size" must be int or Tuple[int, int] '
             f'but it is {min_size} and {max_size}.')
     # Get random window
-    x_min = randint(0, w - x_size + 1, ())
-    y_min = randint(0, h - y_size + 1, ())
+    x_min = int(randint(0, w - x_size + 1, ()))
+    y_min = int(randint(0, h - y_size + 1, ()))
     x_max = x_min + x_size
     y_max = y_min + y_size
     # Crop the window
