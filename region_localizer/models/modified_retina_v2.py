@@ -15,7 +15,7 @@ from torchvision.ops.feature_pyramid_network import (
     LastLevelP6P7, ExtraFPNBlock, LastLevelMaxPool)
 
 sys.path.append(str(Path(__file__).parents[1]))
-from region_localizer.modified_retina import create_default_anchorgen
+from region_localizer.models.modified_retina import create_default_anchorgen
 from utils.torch_utils.torch_functions import make_compatible_state_dict
 
 

@@ -10,7 +10,7 @@ from torchvision.models import resnet
 from torchvision.models.detection.transform import GeneralizedRCNNTransform
 
 sys.path.append(str(Path(__file__).parents[1]))
-from region_localizer.modified_retina import ModifiedRetina
+from region_localizer.models.modified_retina import ModifiedRetina
 
 
 class RetinaRegionLocalizer(nn.Module):

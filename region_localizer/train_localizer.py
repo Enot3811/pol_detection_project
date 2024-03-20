@@ -18,9 +18,8 @@ from tqdm import tqdm
 import albumentations as A
 
 sys.path.append(str(Path(__file__).parents[1]))
-from region_localizer.retina_region_localizer import RetinaRegionLocalizer
+from region_localizer.models import RetinaRegionLocalizer, ModifiedRetinaV2
 from region_localizer.datasets import RegionDataset, RegionDatasetV2
-from region_localizer.modified_retina_v2 import ModifiedRetinaV2
 
 
 class LossMetric(Metric):

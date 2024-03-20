@@ -16,7 +16,7 @@ from torchvision.ops.feature_pyramid_network import (
 from torchvision.ops.feature_pyramid_network import LastLevelP6P7
 
 sys.path.append(str(Path(__file__).parents[1]))
-from region_localizer.modified_attention import ModifiedAttention
+from region_localizer.models.modified_attention import ModifiedAttention
 
 
 # Source - torchvision.models.detection.backbone_utils 115
