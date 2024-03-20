@@ -193,6 +193,11 @@ if __name__ == '__main__':
     max_size = int(img_size[0] * max_ratio)
     min_size = int(img_size[0] * min_ratio)
     transf = False
+    rectangle = True
+
+    if rectangle:
+        min_size = (min_size, min_size)
+        max_size = (max_size, max_size)
 
     if transf:
         transforms = A.Compose([
