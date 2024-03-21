@@ -22,7 +22,7 @@ from utils.image_utils.image_functions import read_image, collect_images_paths
 from utils.torch_utils.torch_functions import draw_bounding_boxes
 from Yolov7.yolov7.dataset import create_yolov7_transforms
 from Yolov7.custom.model_utils import (  # noqa
-    create_yolo, load_yolo_checkpoint, yolo_inference, idx2label)
+    create_yolo, load_yolo_checkpoint, yolo_inference, coco_idx2label)
 
 
 def main(
@@ -55,15 +55,15 @@ def main(
     show_time : bool
         Показывать время выполнения.
     """
-    cls_id_to_name = {
-        0: 'Tank'
-    }
+    # cls_id_to_name = {
+    #     0: 'Tank'
+    # }
     # cls_id_to_name = {
     #     0: "fire",
     #     1: "smoke"
     # }
+    cls_id_to_name = coco_idx2label
     num_classes = len(cls_id_to_name)
-    # cls_id_to_name = idx2label
 
     # Получить все пути
     if samples_pth.is_dir():
@@ -156,8 +156,9 @@ def parse_args() -> argparse.Namespace:
                         help='Показывать время выполнения.',
                         action='store_true')
     args = parser.parse_args([
-        'data/tank_1set_rgb/images',
-        '--weights', 'Yolov7/work_dir/old_train_1/ckpts/best_checkpoint.pt',
+        # 'data/camera/2023_09_22_dark_room/keyboard/40lux/dolp/pol_2068.jpg',
+        'data/camera/2023_09_22_dark_room/backpack/5lux/dolp/pol_4177.jpg',
+        '--pretrained',
         '--conf_thresh', '0.2'
     ])
     return args
