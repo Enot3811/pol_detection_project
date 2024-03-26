@@ -38,13 +38,17 @@ def image_tensor_to_numpy(tensor: Tensor) -> NDArray:
         return tensor.detach().cpu().numpy()
 
 
-def image_numpy_to_tensor(array: NDArray) -> Tensor:
+def image_numpy_to_tensor(
+    array: NDArray, device: torch.device = torch.device('cpu')
+) -> Tensor:
     """Convert an image or a batch of images from ndarray to tensor.
 
     Parameters
     ----------
     array : NDArray
         The array with shape `(h, w)`, `(h, w, c)` or `(b, h, w, c)`.
+    device : torch.device, optional
+        Device for image tensor. By default is `torch.device('cpu')`.
 
     Returns
     -------
@@ -52,11 +56,11 @@ def image_numpy_to_tensor(array: NDArray) -> Tensor:
         The tensor with shape `(h, w)`, `(c, h, w)` or `(b, c, h, w)`.
     """
     if len(array.shape) == 3:
-        return torch.tensor(array.transpose(2, 0, 1))
+        return torch.tensor(array.transpose(2, 0, 1), device=device)
     elif len(array.shape) == 4:
-        return torch.tensor(array.transpose(0, 3, 1, 2))
+        return torch.tensor(array.transpose(0, 3, 1, 2), device=device)
     elif len(array.shape) == 2:
-        return torch.tensor(array)
+        return torch.tensor(array, device=device)
 
 
 def draw_bounding_boxes(
