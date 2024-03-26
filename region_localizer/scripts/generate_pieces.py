@@ -104,11 +104,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--min_crop_size', type=natural_int, nargs='+',
         action=required_length(1, 2), required=True,
-        help='Минимальный размер вырезанного фрагмента.')
+        help=('Минимальный размер вырезанного фрагмента. При передаче одной '
+              'размерности фрагменты будут строго квадратными. '
+              'При двух - прямоугольными.'))
     parser.add_argument(
         '--max_crop_size', type=natural_int, nargs='+',
         action=required_length(1, 2), required=True,
-        help='Максимальный размер вырезанного фрагмента.')
+        help=('Максимальный размер вырезанного фрагмента. При передаче одной '
+              'размерности фрагменты будут строго квадратными. '
+              'При двух - прямоугольными.'))
     parser.add_argument(
         '--num_pieces', type=natural_int, default=1,
         help='Количество производимых фрагментов на один регион.')
