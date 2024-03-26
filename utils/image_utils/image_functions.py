@@ -215,3 +215,45 @@ def collect_images_paths(
     for ext in image_extensions:
         paths.extend(image_dir.glob(f'*.{ext}'))
     return paths
+
+
+def get_sliding_windows(
+    source_image: np.ndarray,
+    h_win: int,
+    w_win: int,
+    stride: int = None
+) -> np.ndarray:
+    """Cut a given image into windows with defined shapes and stride.
+
+    Parameters
+    ----------
+    source_image : np.ndarray
+        The original image.
+    h_win : int
+        Height of the windows.
+    w_win : int
+        Width of the windows.
+    stride : int, optional
+        The stride of the sliding windows.
+        If not defined it will be set by `w_win` value.
+
+    Returns
+    -------
+    np.ndarray
+        The cut image with shape `(n_h_win, n_w_win, h_win, w_win, c)`.
+    """
+    h, w = source_image.shape[:2]
+
+    if stride is None:
+        stride = w_win
+
+    x_indexer = (
+        np.expand_dims(np.arange(w_win), 0) +
+        np.expand_dims(np.arange(w - w_win, step=stride), 0).T
+    )
+    y_indexer = (
+        np.expand_dims(np.arange(h_win), 0) +
+        np.expand_dims(np.arange(h - h_win, step=stride), 0).T
+    )
+    windows = source_image[y_indexer][:, :, x_indexer].swapaxes(1, 2)
+    return windows
