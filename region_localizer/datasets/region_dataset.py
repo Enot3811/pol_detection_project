@@ -5,16 +5,16 @@ import sys
 from numpy.typing import NDArray
 from torch import Tensor, FloatTensor
 import torch
+from torch.utils.data import Dataset
 from albumentations import Resize, Compose, BboxParams
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.torch_utils.datasets import TorchImageDataset
 from utils.torch_utils.torch_functions import (
     random_crop, image_numpy_to_tensor, FloatBbox)
-from utils.image_utils.image_functions import read_image
+from utils.image_utils.image_functions import read_image, collect_images_paths
 
 
-class RegionDataset(TorchImageDataset):
+class RegionDataset(Dataset):
 
     def __init__(
         self, image_dir: Union[str, Path],
@@ -44,7 +44,10 @@ class RegionDataset(TorchImageDataset):
             Temporary parameter to let to work with old one class models.
             By default is `2`.
         """
-        super().__init__(image_dir, transforms)
+        super().__init__()
+        self.image_dir = image_dir
+        self.transforms = transforms
+        self.img_pths = collect_images_paths(image_dir)
         self.min_crop_size = min_crop_size
         self.max_crop_size = max_crop_size
         self.result_size = result_size
@@ -55,6 +58,9 @@ class RegionDataset(TorchImageDataset):
             [Resize(*result_size)],
             bbox_params=BboxParams(
                 format='pascal_voc', label_fields=['labels']))
+        
+    def __len__(self) -> int:
+        return len(self.img_pths)
 
     def __getitem__(
         self, idx: int
