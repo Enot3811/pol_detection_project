@@ -66,7 +66,8 @@ def resize_image(image: NDArray, new_size: Tuple[int, int]) -> NDArray:
 def show_image_plt(
     img: NDArray,
     ax: Optional[plt.Axes] = None,
-    figsize: Tuple[int, int] = (16, 8)
+    figsize: Tuple[int, int] = (16, 8),
+    plt_show: bool = False
 ) -> plt.Axes:
     """Display an image on a matplotlib figure.
 
@@ -79,6 +80,9 @@ def show_image_plt(
         will be created.
     figsize : Tuple[int, int], optional
         Figsize for pyplot figure. By default is `(16, 8)`.
+    plt_show : bool, optional
+        Whether to make `plt.show()` in this function's calling.
+        By default is `False`.
 
     Returns
     -------
@@ -88,6 +92,8 @@ def show_image_plt(
     if ax is None:
         _, ax = plt.subplots(figsize=figsize)
     ax.imshow(img)
+    if plt_show:
+        plt.show()
     return ax
 
 
