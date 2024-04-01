@@ -22,7 +22,7 @@ def main(
     if save_pth is None:
         file_name, file_ext = image_pth.name.split('.')
         file_name += '_resized.' + file_ext
-        save_pth = save_pth.parent / file_name
+        save_pth = image_pth.parent / file_name
     save_image(image, save_pth)
 
 
