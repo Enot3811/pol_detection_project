@@ -100,7 +100,8 @@ def show_image_plt(
 def show_images_cv2(
     images: Union[NDArray, List[NDArray]],
     window_title: Union[str, List[str]] = 'image',
-    destroy_windows: bool = True
+    destroy_windows: bool = True,
+    delay: int = 0
 ) -> int:
     """Display one or a few images by cv2.
 
@@ -114,14 +115,18 @@ def show_images_cv2(
     window_title : Union[str, List[str]], optional
         Image window's title. If List is provided it must have the same length
         as the list of images.
-    destroy_windows : bool
+    destroy_windows : bool, optional
         Whether to close windows after function's end.
+    delay : int, optional
+        Time in ms to wait before window closing. If `0` is passed then window
+        won't be closed before any key is pressed. By default is `0`.
 
     Returns
     -------
     int
         Pressed key code.
     """
+    key_code = -1
     try:
         if isinstance(images, (List, tuple)):
             if isinstance(window_title, str):
@@ -146,7 +151,7 @@ def show_images_cv2(
         else:
             raise TypeError('"images" must be NDArray or List of NDArrays, '
                             f'but got {type(images)}')
-        key_code = cv2.waitKey(0)
+        key_code = cv2.waitKey(delay)
         if destroy_windows:
             cv2.destroyAllWindows
     except KeyboardInterrupt:
