@@ -14,11 +14,13 @@ sys.path.append(str(Path(__file__).parents[2]))
 from utils.argparse_utils import natural_int
 
 
-def main(src_json: Path, dst_json: Optional[Path] = None):
+def main(
+    src_json: Path, dst_json: Optional[Path] = None, indent_size: int = 4
+):
     with open(src_json) as f:
         raw_json = f.read()
     json_dict = json.loads(raw_json)
-    raw_json = json.dumps(json_dict, indent=4)
+    raw_json = json.dumps(json_dict, indent=indent_size)
     if dst_json is None:
         file_name = src_json.name.split('.')[0] + '_indented.json'
         dst_json = src_json.parent / file_name
@@ -56,4 +58,5 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == '__main__':
     args = parse_args()
-    main(src_json=args.src_json, dst_json=args.dst_json)
+    main(src_json=args.src_json, dst_json=args.dst_json,
+         indent_size=args.indent_size)
