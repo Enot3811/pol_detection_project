@@ -80,7 +80,7 @@ def main(
                 reg_img, min_size=min_crop_size, max_size=max_crop_size,
                 return_position=True)
             if rotate_pieces:
-                piece_img = rotate(piece_img)
+                piece_img = rotate(image=piece_img)['image']
 
             # Save pieces
             piece_name = f'{reg_name}_{i}'
