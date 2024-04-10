@@ -172,36 +172,44 @@ class RegionDataset(Dataset):
 
 if __name__ == '__main__':
     from functools import partial
-    import matplotlib.pyplot as plt
     import albumentations as A
     from torch.utils.data import DataLoader
-    from utils.image_utils.image_functions import show_image_plt
+    from utils.image_utils.image_functions import show_images_cv2
     from utils.torch_utils.torch_functions import (
         image_tensor_to_numpy, draw_bounding_boxes)
 
+    # Settings
     image_dir = ('data/satellite_dataset/dataset/train')
     b_size = 4
     img_size = (2464, 2464)
-    result_size = (1024, 1024)
+    result_size = (900, 900)
     max_ratio = 0.8
     min_ratio = 0.5
     max_size = int(img_size[0] * max_ratio)
     min_size = int(img_size[0] * min_ratio)
-    transf = False
     rectangle = True
+    transf = True
+    rotate = False
+    blur = True
 
     if rectangle:
         min_size = (min_size, min_size)
         max_size = (max_size, max_size)
 
     if transf:
-        transforms = A.Compose([
-            A.RandomRotate90(always_apply=True)
-        ], bbox_params=BboxParams(format='pascal_voc',
-                                  label_fields=['labels']))
+        transforms = []
+        if rotate:
+            transforms.append(A.RandomRotate90(always_apply=True))
+        if blur:
+            transforms.append(A.Blur(blur_limit=7, p=1.0))
+        transforms = A.Compose(
+            transforms,
+            bbox_params=BboxParams(
+                format='pascal_voc', label_fields=['labels']))
     else:
         transforms = None
 
+    # Get dataset and dloader
     collate_func = partial(
         RegionDataset.collate_func, device=torch.device('cpu'))
     dset = RegionDataset(
@@ -210,12 +218,12 @@ if __name__ == '__main__':
     dloader = DataLoader(
         dset, batch_size=b_size, collate_fn=collate_func)
     
+    # Iterate over dloader
     for batch in dloader:
         for i in range(b_size):
             map_img = batch[0][i]
             region_img = batch[1][i]
             target = batch[2][i]
-            fig, axes = plt.subplots(1, 2)
 
             if isinstance(map_img, Tensor):
                 map_img = image_tensor_to_numpy(
@@ -228,10 +236,12 @@ if __name__ == '__main__':
 
             boxes_img = draw_bounding_boxes(map_img, [bbox])
 
-            show_image_plt(boxes_img, axes[0])
-            show_image_plt(region_img, axes[1])
-
-            fig.set_size_inches((30, 15))
             print('Bbox:', bbox, 'h_size:', bbox[3] - bbox[1],
                   'w_size:', bbox[2] - bbox[0])
-            plt.show()
+
+            key = show_images_cv2(
+                [boxes_img, region_img],
+                ['region', 'piece'],
+                destroy_windows=False)
+            if key == 27:
+                exit()
