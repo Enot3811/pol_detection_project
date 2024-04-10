@@ -274,7 +274,7 @@ def main(config_pth: Path):
         torch.save(checkpoint, ckpt_dir / 'last_checkpoint.pth')
 
         sum_loss = val_cls_loss.item() + val_reg_loss.item()
-        if (best_metric is None or best_metric < sum_loss):
+        if (best_metric is None or best_metric > sum_loss):
             torch.save(checkpoint, ckpt_dir / 'best_checkpoint.pth')
             best_metric = sum_loss
 
