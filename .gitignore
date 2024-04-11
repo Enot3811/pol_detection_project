@@ -28,3 +28,4 @@ test_config.json
 
 # ultralytics
 runs/**
+args.yaml
