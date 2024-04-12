@@ -5,7 +5,6 @@ import shutil
 import json
 import argparse
 import sys
-from functools import partial
 
 import torch
 import torch.optim as optim
@@ -102,21 +101,22 @@ def main(config_pth: Path):
         dataset_cls = RegionDatasetV2
     else:
         raise ValueError(f'Unrecognized dataset {config["dataset_type"]}')
-    collate_func = partial(dataset_cls.collate_func, device=device)
 
+    # TODO добавить аргумент piece_transforms
     train_dset = dataset_cls(
-        train_dir, **config['train_dataset_params'], transforms=transforms)
+        train_dir, **config['train_dataset_params'], device=device,
+        transforms=transforms)
     val_dset = dataset_cls(
-        val_dir, **config['val_dataset_params'])
+        val_dir, **config['val_dataset_params'], device=device)
 
     train_loader = DataLoader(train_dset,
                               batch_size=config['batch_size'],
                               shuffle=config['shuffle_train'],
-                              collate_fn=collate_func)
+                              collate_fn=dataset_cls.collate_func)
     val_loader = DataLoader(val_dset,
                             batch_size=config['batch_size'],
                             shuffle=config['shuffle_val'],
-                            collate_fn=collate_func)
+                            collate_fn=dataset_cls.collate_func)
 
     # Get the model
     if config['architecture'] == 'modified_retina':

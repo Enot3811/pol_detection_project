@@ -1,177 +1,97 @@
 from pathlib import Path
-from typing import Callable, Union, Tuple, Dict, List
+from typing import Tuple, Dict, List, Any
 import sys
+from functools import reduce
 
-from numpy.typing import NDArray
-from torch import Tensor, FloatTensor
+import numpy as np
 import torch
+from torch import Tensor, FloatTensor
 from albumentations import BboxParams
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.torch_utils.torch_functions import (
-    random_crop, image_numpy_to_tensor, FloatBbox)
-from utils.image_utils.image_functions import read_image
-from region_localizer.datasets import RegionDataset
+from utils.torch_utils.torch_functions import image_numpy_to_tensor
+from region_localizer.datasets.region_dataset import RegionDataset
 
 
 class RegionDatasetV2(RegionDataset):
-    def __init__(
-        self, image_dir: Union[str, Path],
-        min_crop_size: Union[int, Tuple[int, int]],
-        max_crop_size: Union[int, Tuple[int, int]],
-        result_size: Tuple[int, int], transforms: Callable = None,
-        num_classes: int = 2,
-        num_crops: int = 1
-    ):
-        """Initialize `RegionDatasetV2` object.
+    """Dataset for region localizer v2.
+    
+    Each sample represented as a map image stacked with cropped piece
+    from this map and bounding box of this piece.
+    The map image and piece image may be processed with some augmentations.
+    Pieces can be processed separately with `piece_transforms` argument.
+    At the end both these images will be resized to the same `result_size`.
+    """
+
+    def postprocess_sample(
+        self, sample: Dict[str, Any]
+    ) -> Tuple[List[FloatTensor], List[Dict[str, Tensor]]]:
+        """Convert to tensors and stack map images with cropped pieces.
 
         Parameters
         ----------
-        image_dir : Union[str, Path]
-            An image directory of dataset.
-        min_crop_size : Tuple[int, int]
-            Minimum crop size in `int` or `(h, w)` format.
-        max_crop_size : Tuple[int, int]
-            Maximum crop size in `int` or `(h, w)` format.
-        result_size : Tuple[int, int]
-            Result size that will be used in resize of result images
-            in (h, w) format.
-        transforms : Callable, optional
-            Dataset transforms. Its activation can be tune by overriding
-            `apply_transforms` method. By default is None.
-        num_crops : int, optional
-            How many crops to make and return for one source image.
-            By default is `1`.
-        num_classes : int, optional
-            Temporary parameter to let to work with old one class models.
-            By default is `2`.
-        """
-        super().__init__(
-            image_dir, min_crop_size, max_crop_size, result_size, transforms,
-            num_classes)
-        self.num_crops = num_crops
-
-    def __getitem__(
-        self, idx: int
-    ) -> Tuple[Tensor, Tensor, Dict[str, Tensor]]:
-        """Get sample with a map, regions and regions bboxes with dummy labels.
-
-        The map and the region are `FloatTensor` images and target is a dict
-        with "boxes" and "labels" that represented as `FloatTensor` with shape
-        `(num_crops, 4)` and `IntTensor` with shape `(num_crops,)`.
-
-        Parameters
-        ----------
-        idx : int
-            An index of sample.
+        sample : Dict[str, Any]
+            Sample dict with keys:
+            - "map_img" - `uint8 NDArray` with shape `(*result_size, 3)`
+            - "pieces_imgs" - `list of uint8 NDArray` with shapes
+            `(*result_size, 3)`
+            - "bboxes" - `list of FloatBbox`.
 
         Returns
         -------
-        Tuple[Tensor, Tensor, Dict[str, Tensor]]
-            The map, the region and the targets dict.
+        Tuple[List[FloatTensor], List[Dict[str, Tensor]]]
+            - Maps stacked with pieces with shapes `(6, *result_size)`
+            - Targets dict with "boxes" and "labels" tensors.
         """
-        map_img = read_image(self.img_pths[idx])
-        bboxes = []
-        result_regions = []
-        for _ in range(self.num_crops):
-            region, bbox = random_crop(
-                map_img, self.min_crop_size, self.max_crop_size,
-                return_position=True)
-            bboxes.append(bbox)
-            result_region = self.resize_transf(
-                image=region, bboxes=[], labels=[])['image']
-            result_regions.append(result_region)
-        
-        resized = self.resize_transf(
-            image=map_img, bboxes=bboxes, labels=[0] * self.num_crops)
-        result_map = resized['image']
-        result_bboxes = resized['bboxes']
-
-        if self.transforms:
-            result_map, result_regions, result_bboxes = self.apply_transforms(
-                result_map, result_regions, result_bboxes)
+        map_img = sample['map_img']
+        pieces_imgs = sample['pieces_imgs']
+        bboxes = sample['bboxes']
+        result_vols: List[FloatTensor] = []
 
         # Convert to tensors
-        result_map = (image_numpy_to_tensor(result_map)
-                      .to(dtype=torch.float32) / 255)
-
+        map_img = image_numpy_to_tensor(
+            map_img.astype(np.float32) / 255, device=self.device)
+        
         targets = []
-        label = 0 if self.num_classes == 1 else 1  # temporary label assignment
         for i in range(self.num_crops):
             # Iterate over List[ndarray], convert, normalize and concatenate
-            # each region with map
-            result_regions[i] = torch.cat((
-                result_map,
-                (image_numpy_to_tensor(result_regions[i])
-                 .to(dtype=torch.float32) / 255)))
-            
-            # Convert and add dimension
+            # each piece with map
+            result_vols.append(torch.cat((map_img, image_numpy_to_tensor(
+                pieces_imgs[i].astype(np.float32) / 255, device=self.device))
+            ))
+            # Convert and add dimension to the boxes
             targets.append({
-                'boxes': torch.tensor(result_bboxes[i],
-                                      dtype=torch.float32)[None, ...],
-                'labels': torch.tensor([label], dtype=torch.int64)
+                'boxes': torch.tensor(
+                    bboxes[i], dtype=torch.float32)[None, ...],
+                'labels': torch.tensor([1], dtype=torch.int64)
             })  # background - 0, target - 1
+        return result_vols, targets
 
-        return result_regions, targets
-    
-    def apply_transforms(
-        self, map_image: NDArray, region_images: List[NDArray],
-        bboxes: List[FloatBbox]
-    ) -> Tuple[Union[NDArray, Tensor], Union[NDArray, Tensor], Tensor]:
-        """Apply transforms.
-
-        Parameters
-        ----------
-        map_image : NDArray
-            Map image in uint8.
-        region_images : NDArray
-            Region image in uint8.
-        bboxes : FloatBbox
-            List of `FloatBbox`.
-
-        Returns
-        -------
-        Tuple[Union[NDArray, Tensor], Union[NDArray, Tensor], Tensor]
-            Transformed data.
-        """
-        transformed = self.transforms(
-            image=map_image, bboxes=bboxes, labels=[0] * self.num_crops)
-        map_image = transformed['image']
-        bboxes = transformed['bboxes']
-        # Iterate over regions list and transform each of them
-        region_images = list(map(
-            lambda region: (self.transforms(image=region, bboxes=[], labels=[])
-                            ['image']),
-            region_images))
-    
-        return map_image, region_images, bboxes
-    
     @staticmethod
     def collate_func(
-        batch: Tuple[Tuple[List[FloatTensor], List[Dict[str, FloatTensor]]]],
-        device: torch.device
-    ) -> Tuple[List[FloatTensor], List[FloatTensor], List[Dict[str, Tensor]]]:
-        """Collate function that prepare batch to Retina input requirements.
+        batch: List[Tuple[List[Tensor], List[Dict[str, Tensor]]]],
+    ) -> Tuple[List[Tensor], List[Dict[str, Tensor]]]:
+        """Prepare batch to `RetinaRegionLocalizerV2` input requirements.
 
-        RetinaNet input images must be list of FloatTensors that may have
-        different shapes.
+        Stacked maps and pieces images must be `list[FloatTensors]`
+        and targets should be `list[dict]` when each dict have "boxes"
+        and "labels" tensors.
 
         Parameters
         ----------
-        batch : Tuple[Tuple[List[FloatTensor], List[Dict[str, FloatTensor]]]]
-            Batched data in retina format, tensors `(b, c, h, w)`.
+        batch : List[Tuple[List[Tensor], List[Dict[str, Tensor]]]]
+            Batch as a list of samples.
 
         Returns
         -------
         Tuple[List[FloatTensor], List[FloatTensor], List[Dict[str, Tensor]]]
-            Data in RetinaNet input format.
+            Batch in required format.
         """
-        map_images, targets = batch[0]
-        for i in range(len(map_images)):
-            map_images[i] = map_images[i].to(device=device)
-            targets[i]['boxes'] = targets[i]['boxes'].to(device=device)
-            targets[i]['labels'] = targets[i]['labels'].to(device=device)
-        return map_images, targets
+        return reduce(
+            lambda stacked, sample: (
+                stacked[0] + sample[0],
+                stacked[1] + sample[1]),
+            batch)
     
 
 if __name__ == '__main__':
@@ -180,33 +100,34 @@ if __name__ == '__main__':
     from utils.image_utils.image_functions import show_images_cv2
     from utils.torch_utils.torch_functions import (
         image_tensor_to_numpy, draw_bounding_boxes)
-    from functools import partial
 
-    # Settings
+    # Overall params
     image_dir = ('data/satellite_dataset/dataset/train')
-    num_crops = 3
-    b_size = 1
+    b_size = 2
+    num_crops = 4
+    device = torch.device('cuda')
+    # Dataset sizes params
     img_size = (2464, 2464)
     result_size = (900, 900)
-    max_ratio = 0.8
-    min_ratio = 0.5
-    max_size = int(img_size[0] * max_ratio)
-    min_size = int(img_size[0] * min_ratio)
+    max_crop_size = img_size[0] * 0.8
+    min_crop_size = img_size[0] * 0.5
     rectangle = True
-    transf = True
+    # Transforms params
     rotate = False
-    blur = True
+    blur = False
+    # Piece transforms
+    piece_blur = True
 
     if rectangle:
-        min_size = (min_size, min_size)
-        max_size = (max_size, max_size)
+        min_crop_size = (min_crop_size, min_crop_size)
+        max_crop_size = (max_crop_size, max_crop_size)
 
-    if transf:
+    if rotate or blur:
         transforms = []
         if rotate:
             transforms.append(A.RandomRotate90(always_apply=True))
         if blur:
-            transforms.append(A.Blur(blur_limit=15, p=1.0))
+            transforms.append(A.Blur(blur_limit=7, p=1.0))
         transforms = A.Compose(
             transforms,
             bbox_params=BboxParams(
@@ -214,13 +135,20 @@ if __name__ == '__main__':
     else:
         transforms = None
 
+    # TODO добавить оттенки
+    if piece_blur:
+        piece_transforms = []
+        if piece_blur:
+            piece_transforms.append(A.Blur(blur_limit=7, p=1.0))
+    else:
+        piece_transforms = None
+
     # Get dataset and dloader
-    collate_func = partial(
-        RegionDatasetV2.collate_func, device=torch.device('cpu'))
     dset = RegionDatasetV2(
-        image_dir, min_size, max_size,
-        result_size=result_size, transforms=transforms, num_crops=num_crops)
-    dloader = DataLoader(dset, batch_size=b_size, collate_fn=collate_func)
+        image_dir, min_crop_size, max_crop_size, result_size, num_crops,
+        device, transforms, piece_transforms)
+    dloader = DataLoader(
+        dset, batch_size=b_size, collate_fn=RegionDatasetV2.collate_func)
     
     # Iterate over dloader
     for batch in dloader:
