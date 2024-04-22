@@ -187,11 +187,13 @@ def main(config_pth: Path):
     if model_params:
         model.load_state_dict(model_params)
 
-    # Get the optimizer
+    # Get the optimizer and AMP scaler
     optimizer = optim.Adam(model.parameters(), lr=config['lr'],
                            weight_decay=config['weight_decay'])
     if optim_params:
         optimizer.load_state_dict(optim_params)
+    amp_scaler = torch.cuda.amp.grad_scaler.GradScaler(
+        enabled=config['use_amp'])
 
     # Get the scheduler
     lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
@@ -217,11 +219,13 @@ def main(config_pth: Path):
         # Train epoch
         model.train()
         for batch in tqdm(train_loader, 'Train step'):
-            losses, predicts = model(*batch)
-            loss = losses['classification'] + losses['bbox_regression']
-            loss.backward()
-    
-            optimizer.step()
+            with torch.autocast(device_type=str(device), dtype=torch.float16,
+                                enabled=config['use_amp']):
+                losses, predicts = model(*batch)
+                loss = losses['classification'] + losses['bbox_regression']
+            amp_scaler.scale(loss).backward()
+            amp_scaler.step(optimizer)
+            amp_scaler.update()
             optimizer.zero_grad()
 
             targets = batch[-1]
