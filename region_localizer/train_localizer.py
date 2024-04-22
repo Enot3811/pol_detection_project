@@ -83,17 +83,66 @@ def main(config_pth: Path):
     # Get tensorboard
     log_writer = SummaryWriter(str(tensorboard_dir))
 
+    # Get transforms
+    if any(config['train_transforms']['transforms'].values()):
+        train_transforms = []
+        if config['train_transforms']['transforms']['rotation']:
+            train_transforms.append(A.RandomRotate90(always_apply=True))
+        if config['train_transforms']['transforms']['blur']:
+            train_transforms.append(A.Blur(blur_limit=3, p=1.0))
+        train_transforms = A.Compose(
+            train_transforms,
+            bbox_params=A.BboxParams(
+                format='pascal_voc', label_fields=['labels']))
+    else:
+        train_transforms = None
+
+    if any(config['train_transforms']['piece_transforms'].values()):
+        train_piece_transforms = []
+        if config['train_transforms']['piece_transforms']['color_jitter']:
+            train_piece_transforms.append(A.ColorJitter(
+                brightness=(0.4, 1.3), contrast=(0.7, 1.2),
+                saturation=(0.5, 1.4), hue=(-0.01, 0.01), p=1.0))
+        if config['train_transforms']['piece_transforms']['blur']:
+            train_piece_transforms.append(A.Blur(blur_limit=3, p=1.0))
+        train_piece_transforms = A.Compose(
+            train_piece_transforms,
+            bbox_params=A.BboxParams(
+                format='pascal_voc', label_fields=['labels']))
+    else:
+        train_piece_transforms = None
+
+    if any(config['val_transforms']['transforms'].values()):
+        val_transforms = []
+        if config['val_transforms']['transforms']['rotation']:
+            val_transforms.append(A.RandomRotate90(always_apply=True))
+        if config['val_transforms']['transforms']['blur']:
+            val_transforms.append(A.Blur(blur_limit=3, p=1.0))
+        val_transforms = A.Compose(
+            val_transforms,
+            bbox_params=A.BboxParams(
+                format='pascal_voc', label_fields=['labels']))
+    else:
+        val_transforms = None
+
+    if any(config['val_transforms']['piece_transforms'].values()):
+        val_piece_transforms = []
+        if config['val_transforms']['piece_transforms']['color_jitter']:
+            val_piece_transforms.append(A.ColorJitter(
+                brightness=(0.4, 1.3), contrast=(0.7, 1.2),
+                saturation=(0.5, 1.4), hue=(-0.01, 0.01), p=1.0))
+        if config['val_transforms']['piece_transforms']['blur']:
+            val_piece_transforms.append(A.Blur(blur_limit=3, p=1.0))
+        val_piece_transforms = A.Compose(
+            val_piece_transforms,
+            bbox_params=A.BboxParams(
+                format='pascal_voc', label_fields=['labels']))
+    else:
+        val_piece_transforms = None
+
     # Get datasets and loaders
     train_dir = Path(config['dataset']) / 'train'
     val_dir = Path(config['dataset']) / 'val'
-
-    if config['rotation']:
-        transforms = A.Compose([
-            A.RandomRotate90(always_apply=True)
-        ], bbox_params=A.BboxParams(format='pascal_voc',
-                                    label_fields=['labels']))
-    else:
-        transforms = None
 
     if config['dataset_type'] == 'region_dataset':
         dataset_cls = RegionDataset
@@ -102,12 +151,12 @@ def main(config_pth: Path):
     else:
         raise ValueError(f'Unrecognized dataset {config["dataset_type"]}')
 
-    # TODO добавить аргумент piece_transforms
     train_dset = dataset_cls(
         train_dir, **config['train_dataset_params'], device=device,
-        transforms=transforms)
+        transforms=train_transforms, piece_transforms=train_piece_transforms)
     val_dset = dataset_cls(
-        val_dir, **config['val_dataset_params'], device=device)
+        val_dir, **config['val_dataset_params'], device=device,
+        transforms=val_transforms, piece_transforms=val_piece_transforms)
 
     train_loader = DataLoader(train_dset,
                               batch_size=config['batch_size'],
