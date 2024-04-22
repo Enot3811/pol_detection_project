@@ -207,8 +207,10 @@ class RegionDataset(AbstractTorchDataset):
             # Convert and add dimension to the boxes
             targets.append({
                 'boxes': torch.tensor(
-                    bboxes[i], dtype=torch.float32)[None, ...],
-                'labels': torch.tensor([1], dtype=torch.int64)
+                    bboxes[i], dtype=torch.float32,
+                    device=self.device)[None, ...],
+                'labels': torch.tensor(
+                    [1], dtype=torch.int64, device=self.device)
             })  # background - 0, target - 1
 
         return map_imgs, pieces_imgs, targets
