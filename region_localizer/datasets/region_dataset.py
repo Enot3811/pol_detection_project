@@ -159,6 +159,11 @@ class RegionDataset(AbstractTorchDataset):
                 lambda region: self.transforms(
                     image=region, bboxes=[], labels=[])['image'],
                 sample['pieces_imgs']))
+        if self.piece_transforms:
+            sample['pieces_imgs'] = list(map(
+                lambda region: self.piece_transforms(
+                    image=region, bboxes=[], labels=[])['image'],
+                sample['pieces_imgs']))
         return sample
     
     def postprocess_sample(
@@ -250,8 +255,8 @@ if __name__ == '__main__':
 
     # Overall params
     image_dir = ('data/satellite_dataset/dataset/train')
-    b_size = 2
-    num_crops = 4
+    b_size = 1
+    num_crops = 1
     device = torch.device('cuda')
     # Dataset sizes params
     img_size = (2464, 2464)
@@ -260,10 +265,11 @@ if __name__ == '__main__':
     min_crop_size = img_size[0] * 0.5
     rectangle = True
     # Transforms params
-    rotate = False
+    rotate = True
     blur = False
     # Piece transforms
     piece_blur = True
+    piece_color_jitter = True
 
     if rectangle:
         min_crop_size = (min_crop_size, min_crop_size)
@@ -282,11 +288,18 @@ if __name__ == '__main__':
     else:
         transforms = None
 
-    # TODO добавить оттенки
-    if piece_blur:
+    if piece_blur or piece_color_jitter:
         piece_transforms = []
+        if piece_color_jitter:
+            piece_transforms.append(A.ColorJitter(
+                brightness=(0.4, 1.3), contrast=(0.7, 1.2),
+                saturation=(0.5, 1.4), hue=(-0.01, 0.01), p=1.0))
         if piece_blur:
-            piece_transforms.append(A.Blur(blur_limit=7, p=1.0))
+            piece_transforms.append(A.Blur(blur_limit=3, p=1.0))
+        piece_transforms = A.Compose(
+            piece_transforms,
+            bbox_params=BboxParams(
+                format='pascal_voc', label_fields=['labels']))
     else:
         piece_transforms = None
 
@@ -299,7 +312,7 @@ if __name__ == '__main__':
     
     # Iterate over dloader
     for batch in dloader:
-        for i in range(b_size):
+        for i in range(b_size * num_crops):
             map_img = batch[0][i]
             region_img = batch[1][i]
             target = batch[2][i]
