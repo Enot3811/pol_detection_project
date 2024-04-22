@@ -113,10 +113,11 @@ if __name__ == '__main__':
     min_crop_size = img_size[0] * 0.5
     rectangle = True
     # Transforms params
-    rotate = False
+    rotate = True
     blur = False
     # Piece transforms
     piece_blur = True
+    piece_color_jitter = True
 
     if rectangle:
         min_crop_size = (min_crop_size, min_crop_size)
@@ -135,11 +136,18 @@ if __name__ == '__main__':
     else:
         transforms = None
 
-    # TODO добавить оттенки
-    if piece_blur:
+    if piece_blur or piece_color_jitter:
         piece_transforms = []
+        if piece_color_jitter:
+            piece_transforms.append(A.ColorJitter(
+                brightness=(0.4, 1.3), contrast=(0.7, 1.2),
+                saturation=(0.5, 1.4), hue=(-0.01, 0.01), p=1.0))
         if piece_blur:
-            piece_transforms.append(A.Blur(blur_limit=7, p=1.0))
+            piece_transforms.append(A.Blur(blur_limit=3, p=1.0))
+        piece_transforms = A.Compose(
+            piece_transforms,
+            bbox_params=BboxParams(
+                format='pascal_voc', label_fields=['labels']))
     else:
         piece_transforms = None
 
