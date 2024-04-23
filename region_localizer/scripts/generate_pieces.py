@@ -39,7 +39,7 @@ from typing import Union, Tuple
 import shutil
 
 from tqdm import tqdm
-from albumentations import RandomRotate90
+import albumentations as A
 
 sys.path.append(str(Path(__file__).parents[2]))
 from utils.image_utils.image_functions import (
@@ -51,11 +51,25 @@ from utils.torch_utils.torch_functions import random_crop
 def main(
     image_dir: Path, min_crop_size: Union[int, Tuple[int, int]],
     max_crop_size: Union[int, Tuple[int, int]],
-    num_pieces: int, rotate_pieces: bool
+    num_pieces: int, rotation: bool, color_jitter: bool, blur: bool
 ):
     # Prepare some stuff
-    if rotate_pieces:
-        rotate = RandomRotate90()
+    if rotation or color_jitter or color_jitter:
+        transforms = []
+        if rotation:
+            transforms.append(A.RandomRotate90())
+        if color_jitter:
+            transforms.append(A.ColorJitter(
+                brightness=(0.4, 1.3), contrast=(0.7, 1.2),
+                saturation=(0.5, 1.4), hue=(-0.01, 0.01), p=0.5))
+        if blur:
+            transforms.append(A.Blur(blur_limit=3, p=0.5))
+        transforms = A.Compose(
+            transforms,
+            bbox_params=A.BboxParams(
+                format='pascal_voc', label_fields=['labels']))
+    else:
+        transforms = None
 
     # Get images
     regions_pths = collect_images_paths(image_dir)
@@ -79,8 +93,9 @@ def main(
             piece_img, bbox = random_crop(
                 reg_img, min_size=min_crop_size, max_size=max_crop_size,
                 return_position=True)
-            if rotate_pieces:
-                piece_img = rotate(image=piece_img)['image']
+            if rotation:
+                piece_img = transforms(
+                    image=piece_img, bboxes=[], labels=[])['image']
 
             # Save pieces
             piece_name = f'{reg_name}_{i}'
@@ -117,8 +132,14 @@ def parse_args() -> argparse.Namespace:
         '--num_pieces', type=natural_int, default=1,
         help='Количество производимых фрагментов на один регион.')
     parser.add_argument(
-        '--rotate_pieces', action='store_true',
+        '--rotation', action='store_true',
         help='Следует ли крутить изображения фрагментов.')
+    parser.add_argument(
+        '--color_jitter', action='store_true',
+        help='Применить color jitter на изображения фрагментов.')
+    parser.add_argument(
+        '--blur', action='store_true',
+        help='Применить blur на изображения фрагментов.')
     
     args = parser.parse_args()
 
@@ -141,7 +162,9 @@ if __name__ == '__main__':
     min_crop_size = args.min_crop_size
     max_crop_size = args.max_crop_size
     num_pieces = args.num_pieces
-    rotate_pieces = args.rotate_pieces
+    rotation = args.rotation
+    color_jitter = args.color_jitter
+    blur = args.blur
     main(image_dir=image_dir, num_pieces=num_pieces,
          min_crop_size=min_crop_size, max_crop_size=max_crop_size,
-         rotate_pieces=rotate_pieces)
+         rotation=rotation, color_jitter=color_jitter, blur=blur)
