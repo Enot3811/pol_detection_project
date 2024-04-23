@@ -84,7 +84,7 @@ def main(config_pth: Path, image_pth: Path, device: str):
             _, predictions = model(input_img)
 
             # Prepare results
-            if len(predictions) == 0:
+            if len(predictions[0]['boxes']) == 0:
                 continue
             pred_bbox = predictions[0]['boxes'][0].tolist()
             bbox_region = draw_bounding_boxes(
