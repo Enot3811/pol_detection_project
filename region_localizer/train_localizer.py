@@ -89,7 +89,7 @@ def main(config_pth: Path):
         if config['train_transforms']['transforms']['rotation']:
             train_transforms.append(A.RandomRotate90(always_apply=True))
         if config['train_transforms']['transforms']['blur']:
-            train_transforms.append(A.Blur(blur_limit=3, p=1.0))
+            train_transforms.append(A.Blur(blur_limit=3, p=0.5))
         train_transforms = A.Compose(
             train_transforms,
             bbox_params=A.BboxParams(
@@ -102,9 +102,9 @@ def main(config_pth: Path):
         if config['train_transforms']['piece_transforms']['color_jitter']:
             train_piece_transforms.append(A.ColorJitter(
                 brightness=(0.4, 1.3), contrast=(0.7, 1.2),
-                saturation=(0.5, 1.4), hue=(-0.01, 0.01), p=1.0))
+                saturation=(0.5, 1.4), hue=(-0.01, 0.01), p=0.5))
         if config['train_transforms']['piece_transforms']['blur']:
-            train_piece_transforms.append(A.Blur(blur_limit=3, p=1.0))
+            train_piece_transforms.append(A.Blur(blur_limit=3, p=0.5))
         train_piece_transforms = A.Compose(
             train_piece_transforms,
             bbox_params=A.BboxParams(
@@ -117,7 +117,7 @@ def main(config_pth: Path):
         if config['val_transforms']['transforms']['rotation']:
             val_transforms.append(A.RandomRotate90(always_apply=True))
         if config['val_transforms']['transforms']['blur']:
-            val_transforms.append(A.Blur(blur_limit=3, p=1.0))
+            val_transforms.append(A.Blur(blur_limit=3, p=0.5))
         val_transforms = A.Compose(
             val_transforms,
             bbox_params=A.BboxParams(
@@ -130,9 +130,9 @@ def main(config_pth: Path):
         if config['val_transforms']['piece_transforms']['color_jitter']:
             val_piece_transforms.append(A.ColorJitter(
                 brightness=(0.4, 1.3), contrast=(0.7, 1.2),
-                saturation=(0.5, 1.4), hue=(-0.01, 0.01), p=1.0))
+                saturation=(0.5, 1.4), hue=(-0.01, 0.01), p=0.5))
         if config['val_transforms']['piece_transforms']['blur']:
-            val_piece_transforms.append(A.Blur(blur_limit=3, p=1.0))
+            val_piece_transforms.append(A.Blur(blur_limit=3, p=0.5))
         val_piece_transforms = A.Compose(
             val_piece_transforms,
             bbox_params=A.BboxParams(
