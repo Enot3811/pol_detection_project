@@ -124,7 +124,7 @@ def main(
         pieces_pths = list(region_pieces_dir.glob('*.jpg'))
         pieces_pths.sort()
         for bbox_pth, piece_pth in zip(pieces_bboxes_pths, pieces_pths):
-            piece_img = read_image(piece_pth)
+            orig_piece_img = read_image(piece_pth)
             with open(bbox_pth) as f:
                 bbox = list(map(int, f.readline().split(' ')))
             
@@ -133,7 +133,7 @@ def main(
             bbox[2] *= dw
             bbox[1] *= dh
             bbox[3] *= dh
-            piece_img = resize_image(piece_img, input_size)
+            piece_img = resize_image(orig_piece_img, input_size)
             tensor_region_img = image_numpy_to_tensor(region_img, device)
             piece_img = image_numpy_to_tensor(piece_img, device)
             input_img = (torch.cat([tensor_region_img, piece_img])[None, ...]
@@ -148,7 +148,10 @@ def main(
             bbox_region = draw_bounding_boxes(
                 bbox_region, [pred_bbox], color=(255, 0, 0))
             
-            key = show_images_cv2(bbox_region, destroy_windows=False)
+            key = show_images_cv2(
+                [bbox_region, orig_piece_img],
+                ['Red - predict, green - gt', 'Input'],
+                destroy_windows=False)
             if key == 27:
                 return
             
