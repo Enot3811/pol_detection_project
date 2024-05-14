@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 import sys
 from typing import Tuple, Optional
+from random import randint
 
 sys.path.append(str(Path(__file__).parents[2]))
 from utils.image_utils.image_functions import (
@@ -16,20 +17,22 @@ from utils.argparse_utils import natural_int, required_length
 def main(
     src_image: Path, min_crop_size: Tuple[int, int],
     max_crop_size: Tuple[int, int], num_pieces: int, save_pth: Optional[Path],
-    color: Tuple[int, int, int]
+    color: Optional[Tuple[int, int, int]]
 ):
+    generate_color = color is None
     image = read_image(src_image)
-
-    bboxes = [
-        random_crop(
-            image, min_size=min_crop_size, max_size=max_crop_size,
-            return_position=True
-        )[1]
-        for _ in range(num_pieces)]
-    bbox_image = draw_bounding_boxes(image, bboxes, color=color, line_width=2)
-    show_image_plt(bbox_image, plt_show=True)
+    for _ in range(num_pieces):
+        bbox = [
+            random_crop(
+                image, min_size=min_crop_size, max_size=max_crop_size,
+                return_position=True
+            )[1]]
+        if generate_color:
+            color = [randint(0, 255) for _ in range(3)]
+        image = draw_bounding_boxes(image, bbox, color=color, line_width=2)
+    show_image_plt(image, plt_show=True)
     if save_pth is not None:
-        save_image(bbox_image, save_pth)
+        save_image(image, save_pth)
 
 
 def parse_args() -> argparse.Namespace:
@@ -62,7 +65,7 @@ def parse_args() -> argparse.Namespace:
         '--save_pth', type=Path, default=None,
         help='Save path if saving is needed.')
     parser.add_argument(
-        '--color', type=int, nargs=3, default=[255, 0, 0],
+        '--color', type=int, nargs=3, default=None, required=False,
         help='RGB color for bounding boxes.')
 
     args = parser.parse_args()
