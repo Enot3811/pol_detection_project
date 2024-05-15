@@ -18,7 +18,8 @@ import albumentations as A
 
 sys.path.append(str(Path(__file__).parents[1]))
 from region_localizer.models import RetinaRegionLocalizer, ModifiedRetinaV2
-from region_localizer.datasets import RegionDataset, RegionDatasetV2
+from region_localizer.datasets import (
+    RegionDataset, RegionDatasetV2, RegionDatasetV2Dif)
 
 
 class LossMetric(Metric):
@@ -60,7 +61,7 @@ def main(config_pth: Path):
     ckpt_dir = work_dir / 'ckpts'
     if not config['continue_training']:
         if work_dir.exists():
-            input('Specified directory already exists. '
+            input(f'Specified directory "{str(work_dir)}" already exists. '
                   'Сontinuing to work will delete the data located there. '
                   'Press enter to continue.')
             shutil.rmtree(work_dir)
@@ -148,6 +149,8 @@ def main(config_pth: Path):
         dataset_cls = RegionDataset
     elif config['dataset_type'] == 'region_dataset_v2':
         dataset_cls = RegionDatasetV2
+    elif config['dataset_type'] == 'region_dataset_v2_dif':
+        dataset_cls = RegionDatasetV2Dif
     else:
         raise ValueError(f'Unrecognized dataset {config["dataset_type"]}')
 
@@ -176,10 +179,13 @@ def main(config_pth: Path):
             num_classes=config['num_classes'])
     elif config['architecture'] == 'modified_retina_v2':
         model = ModifiedRetinaV2.create_modified_retina(
+            input_channels=config['input_channels'],
             min_size=config['train_dataset_params']['result_size'][0],
             max_size=config['train_dataset_params']['result_size'][0],
             pretrained=config['pretrained'],
-            num_classes=config['num_classes'])
+            num_classes=config['num_classes'],
+            image_mean=config['image_mean'],
+            image_std=config['image_std'])
     else:
         raise ValueError(f'Unrecognized architecture {config["architecture"]}')
 

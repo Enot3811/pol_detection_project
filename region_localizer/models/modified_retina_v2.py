@@ -197,7 +197,8 @@ class ModifiedRetinaV2(RetinaNet):
     
     @staticmethod
     def create_modified_retina(
-        min_size: int, max_size: int, pretrained: bool, num_classes: int
+        input_channels: int, num_classes: int, min_size: int, max_size: int,
+        pretrained: bool, image_mean: List[float], image_std: List[float]
     ) -> 'ModifiedRetinaV2':
         if pretrained:
             trainable_layers = 3
@@ -219,7 +220,8 @@ class ModifiedRetinaV2(RetinaNet):
         layers = list(backbone.named_children())[1:]  # cut out conv(3, 64)
         # and add new conv(6, 64)
         layers.insert(0, (
-            'conv1', nn.Conv2d(6, 64, kernel_size=7, stride=1, bias=False)))
+            'conv1', nn.Conv2d(
+                input_channels, 64, kernel_size=7, stride=1, bias=False)))
         backbone = nn.Sequential(OrderedDict(layers))
         backbone = create_resnet_fpn_extractor(
             backbone, trainable_layers=trainable_layers,
@@ -238,9 +240,9 @@ class ModifiedRetinaV2(RetinaNet):
         model = ModifiedRetinaV2(
             backbone, num_classes, anchor_generator=anchor_gen, head=head,
             min_size=min_size, max_size=max_size,
-            image_mean=[0.485, 0.456, 0.406] * 2,
-            image_std=[0.229, 0.224, 0.225] * 2
-        )  # *2 to normalize 2 stacked images
+            image_mean=image_mean,
+            image_std=image_std
+        )
 
         if weights is not None:
             state_dict = weights.get_state_dict(progress=True)
