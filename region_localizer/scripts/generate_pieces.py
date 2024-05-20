@@ -38,6 +38,7 @@ import sys
 from typing import Union, Tuple
 import shutil
 
+import numpy as np
 from tqdm import tqdm
 import albumentations as A
 
@@ -72,7 +73,8 @@ def main(
         transforms = None
 
     # Get images
-    regions_pths = collect_images_paths(image_dir)
+    regions_pths = collect_images_paths(
+        image_dir, image_extensions=('jpg', 'png', 'npy'))
     regions_pths.sort()
 
     # Check result dir
@@ -85,9 +87,11 @@ def main(
 
     # Generate pieces
     for reg_pth in tqdm(regions_pths, desc='Generate pieces'):
-        reg_name = reg_pth.name.split('.')[0]
-        reg_img = read_image(reg_pth)
-        pieces_dir = result_dir / reg_name
+        if reg_pth.suffix == '.npy':
+            reg_img = np.load(reg_pth)
+        else:
+            reg_img = read_image(reg_pth)
+        pieces_dir = result_dir / reg_pth.stem
 
         for i in range(num_pieces):
             piece_img, bbox = random_crop(
@@ -98,8 +102,12 @@ def main(
                     image=piece_img, bboxes=[], labels=[])['image']
 
             # Save pieces
-            piece_name = f'{reg_name}_{i}'
-            save_image(piece_img, pieces_dir / (piece_name + '.jpg'))
+            piece_name = f'{reg_pth.stem}_{i}'
+            if reg_pth.suffix == '.npy':
+                pieces_dir.mkdir(exist_ok=True, parents=True)
+                np.save(pieces_dir / (piece_name + '.npy'), piece_img)
+            else:
+                save_image(piece_img, pieces_dir / (piece_name + '.jpg'))
             bbox = map(str, bbox)
             with open(pieces_dir / (piece_name + '.txt'), 'w') as f:
                 f.write(' '.join(bbox))
