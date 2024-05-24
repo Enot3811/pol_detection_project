@@ -6,7 +6,6 @@ from typing import Dict, Union, Callable, Any, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
-import torch
 
 from utils.torch_utils.datasets import CvatObjectDetectionDataset
 from mako_camera.cameras_utils import split_raw_pol
@@ -23,8 +22,6 @@ class PolarizationObjectDetectionDataset(CvatObjectDetectionDataset):
     ----------
     dset_pth : Union[Path, str]
         Path to CVAT dataset directory.
-    device : torch.device, optional
-        Device for dataset samples. By default is `torch.device('cpu')`.
     transforms : Callable, optional
         Transforms that performs on sample.
         Required that it has `albumentations.Compose` like structure.
@@ -39,12 +36,11 @@ class PolarizationObjectDetectionDataset(CvatObjectDetectionDataset):
     def __init__(
         self,
         dset_pth: Union[Path, str],
-        device: torch.device = torch.device('cpu'),
         transforms: Callable = None,
         class_to_index: Dict[str, int] = None,
         polarization: bool = False
     ) -> None:
-        super().__init__(dset_pth, device, transforms, class_to_index)
+        super().__init__(dset_pth, transforms, class_to_index)
         # Save polarization mode
         self.polarization = polarization
         # Create img to id maps (required by mosaic and YOLOv7 datasets)

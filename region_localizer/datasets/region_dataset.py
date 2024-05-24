@@ -33,7 +33,6 @@ class RegionDataset(AbstractTorchDataset):
         max_crop_size: Union[int, Tuple[int, int]],
         result_size: Union[int, Tuple[int, int]],
         num_crops: int = 1,
-        device: torch.device = torch.device('cpu'),
         transforms: Optional[Callable] = None,
         piece_transforms: Optional[Callable] = None,
     ):
@@ -59,8 +58,6 @@ class RegionDataset(AbstractTorchDataset):
         num_crops : int, optional
             How many crops to make and return for one map image.
             By default is `1`.
-        device : torch.device, optional
-            Device for dataset samples. By default is `torch.device('cpu')`.
         transforms : Optional[Callable], optional
             Dataset transforms. Performs on both maps and pieces images.
             By default is `None`.
@@ -68,7 +65,7 @@ class RegionDataset(AbstractTorchDataset):
             Pieces transforms. performs only on pieces images.
             By default is `None`.
         """
-        super().__init__(dset_pth, device, transforms)
+        super().__init__(dset_pth, transforms)
         # Save other parameters
         self.min_crop_size = min_crop_size
         self.max_crop_size = max_crop_size
@@ -193,8 +190,7 @@ class RegionDataset(AbstractTorchDataset):
         bboxes = sample['bboxes']
 
         # Convert to tensors and copy for each piece
-        map_img = image_numpy_to_tensor(
-            map_img.astype(np.float32) / 255, device=self.device)
+        map_img = image_numpy_to_tensor(map_img.astype(np.float32) / 255)
         map_imgs = list(torch.unbind(
             map_img[None, ...].repeat(self.num_crops, 1, 1, 1)))
         
@@ -203,15 +199,13 @@ class RegionDataset(AbstractTorchDataset):
             # Iterate over List[ndarray], convert, normalize and concatenate
             # each piece with map
             pieces_imgs[i] = image_numpy_to_tensor(
-                pieces_imgs[i].astype(np.float32) / 255, device=self.device)
+                pieces_imgs[i].astype(np.float32) / 255)
             
             # Convert and add dimension to the boxes
             targets.append({
                 'boxes': torch.tensor(
-                    bboxes[i], dtype=torch.float32,
-                    device=self.device)[None, ...],
-                'labels': torch.tensor(
-                    [1], dtype=torch.int64, device=self.device)
+                    bboxes[i], dtype=torch.float32)[None, ...],
+                'labels': torch.tensor([1], dtype=torch.int64)
             })  # background - 0, target - 1
 
         return map_imgs, pieces_imgs, targets
@@ -260,7 +254,6 @@ if __name__ == '__main__':
     image_dir = ('data/satellite_dataset/dataset/train')
     b_size = 1
     num_crops = 1
-    device = torch.device('cuda')
     # Dataset sizes params
     img_size = (2464, 2464)
     result_size = (900, 900)
@@ -309,7 +302,7 @@ if __name__ == '__main__':
     # Get dataset and dloader
     dset = RegionDataset(
         image_dir, min_crop_size, max_crop_size, result_size, num_crops,
-        device, transforms, piece_transforms)
+        transforms, piece_transforms)
     dloader = DataLoader(
         dset, batch_size=b_size, collate_fn=RegionDataset.collate_func)
     

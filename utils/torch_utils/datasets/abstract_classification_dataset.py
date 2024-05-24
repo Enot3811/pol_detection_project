@@ -4,8 +4,6 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Sequence, Union, Any, Tuple, Dict, Callable, Optional
 
-import torch
-
 from utils.torch_utils.datasets import AbstractTorchDataset
 
 
@@ -16,8 +14,6 @@ class AbstractClassificationDataset(AbstractTorchDataset):
     ----------
     dset_pth : Union[Path, str]
         Path to dataset directory or some file.
-    device : torch.device, optional
-        Device for dataset samples. By default is `torch.device('cpu')`.
     transforms : Callable, optional
         Transforms that performs on sample. By default is `None`.
     class_to_index : Dict[str, int], optional
@@ -28,11 +24,10 @@ class AbstractClassificationDataset(AbstractTorchDataset):
     def __init__(
         self,
         dset_pth: Union[Path, str],
-        device: torch.device = torch.device('cpu'),
         transforms: Callable = None,
         class_to_index: Dict[str, int] = None
     ) -> None:
-        super().__init__(dset_pth, device, transforms)
+        super().__init__(dset_pth, transforms)
         self._class_to_index, self._index_to_class = (
             self._collect_class_labels(self.samples, class_to_index))
 

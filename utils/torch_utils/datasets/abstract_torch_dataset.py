@@ -13,21 +13,17 @@ class AbstractTorchDataset(ABC, Dataset):
     ----------
     dset_pth : Union[Path, str]
         Path to dataset directory or some file.
-    device : torch.device, optional
-        Device for dataset samples. By default is `torch.device('cpu')`.
     transforms : Optional[Callable], optional
         Transforms that performs on sample. By default is `None`.
     """
     def __init__(
         self,
         dset_pth: Union[Path, str],
-        device: torch.device = torch.device('cpu'),
         transforms: Optional[Callable] = None
     ) -> None:
         super().__init__()
         self.dset_pth = self._parse_dataset_pth(dset_pth)
         self.samples = self._collect_samples(self.dset_pth)
-        self.device = device
         self.transforms = transforms
 
     @abstractmethod
@@ -109,8 +105,7 @@ class AbstractTorchDataset(ABC, Dataset):
         Any
             Sample in torch compatible view.
         """
-        return torch.tensor(
-            sample, dtype=torch.float32, device=self.device) / 255
+        return torch.tensor(sample, dtype=torch.float32) / 255
 
     @abstractmethod
     def apply_transforms(self, sample: Any) -> Any:

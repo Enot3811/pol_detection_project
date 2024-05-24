@@ -49,23 +49,19 @@ class RegionDatasetV2(RegionDataset):
         result_vols: List[FloatTensor] = []
 
         # Convert to tensors
-        map_img = image_numpy_to_tensor(
-            map_img.astype(np.float32) / 255, device=self.device)
+        map_img = image_numpy_to_tensor(map_img.astype(np.float32) / 255)
         
         targets = []
         for i in range(self.num_crops):
             # Iterate over List[ndarray], convert, normalize and concatenate
             # each piece with map
             result_vols.append(torch.cat((map_img, image_numpy_to_tensor(
-                pieces_imgs[i].astype(np.float32) / 255, device=self.device))
-            ))
+                pieces_imgs[i].astype(np.float32) / 255))))
             # Convert and add dimension to the boxes
             targets.append({
                 'boxes': torch.tensor(
-                    bboxes[i], dtype=torch.float32,
-                    device=self.device)[None, ...],
-                'labels': torch.tensor(
-                    [1], dtype=torch.int64, device=self.device)
+                    bboxes[i], dtype=torch.float32)[None, ...],
+                'labels': torch.tensor([1], dtype=torch.int64)
             })  # background - 0, target - 1
         return result_vols, targets
 
@@ -107,7 +103,6 @@ if __name__ == '__main__':
     image_dir = ('data/satellite_dataset/dataset/train')
     b_size = 2
     num_crops = 4
-    device = torch.device('cuda')
     # Dataset sizes params
     img_size = (2464, 2464)
     result_size = (900, 900)
@@ -156,7 +151,7 @@ if __name__ == '__main__':
     # Get dataset and dloader
     dset = RegionDatasetV2(
         image_dir, min_crop_size, max_crop_size, result_size, num_crops,
-        device, transforms, piece_transforms)
+        transforms, piece_transforms)
     dloader = DataLoader(
         dset, batch_size=b_size, collate_fn=RegionDatasetV2.collate_func)
     
