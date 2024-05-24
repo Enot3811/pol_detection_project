@@ -15,7 +15,7 @@ import argparse
 import numpy as np
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.image_utils.image_functions import (
+from utils.data_utils.data_functions import (
     resize_image, normalize_to_image, save_image)
 import mako_camera.cameras_utils as pol_func
 

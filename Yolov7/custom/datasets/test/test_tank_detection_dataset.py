@@ -12,7 +12,7 @@ from Yolov7.yolov7.dataset import Yolov7Dataset, create_yolov7_transforms
 from Yolov7.yolov7.mosaic import (
     MosaicMixupDataset, create_post_mosaic_transform)
 from Yolov7.custom.datasets import TankDetectionDataset
-from utils.image_utils.image_functions import show_images_cv2
+from utils.data_utils.data_functions import show_images_cv2
 from utils.torch_utils.torch_functions import (
     image_tensor_to_numpy, draw_bounding_boxes)
 

@@ -16,7 +16,7 @@ import numpy as np
 
 sys.path.append(str(Path(__file__).parents[2]))
 from region_localizer.models import RetinaRegionLocalizer, ModifiedRetinaV2
-from utils.image_utils.image_functions import (
+from utils.data_utils.data_functions import (
     read_image, resize_image, show_images_cv2)
 from utils.torch_utils.torch_functions import (
     image_numpy_to_tensor, draw_bounding_boxes)

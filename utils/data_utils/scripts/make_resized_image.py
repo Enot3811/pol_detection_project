@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 sys.path.append(str(Path(__file__).parents[3]))
-from utils.image_utils.image_functions import (
+from utils.data_utils.data_functions import (
     read_image, save_image, resize_image)
 from utils.argparse_utils import natural_int
 

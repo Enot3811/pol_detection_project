@@ -21,7 +21,7 @@ import shutil
 
 sys.path.append(str(Path(__file__).parents[2]))
 from utils.data_utils.data_functions import collect_paths
-from utils.image_utils.image_functions import IMAGE_EXTENSIONS
+from utils.data_utils.data_functions import IMAGE_EXTENSIONS
 
 
 def main(dsets_pths: List[Path], dst_pth: Path):

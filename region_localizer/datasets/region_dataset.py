@@ -12,8 +12,8 @@ sys.path.append(str(Path(__file__).parents[2]))
 from utils.torch_utils.torch_functions import (
     random_crop, image_numpy_to_tensor)
 from utils.torch_utils.datasets import AbstractTorchDataset
-from utils.image_utils.image_functions import read_image, IMAGE_EXTENSIONS
-from utils.data_utils.data_functions import collect_paths
+from utils.data_utils.data_functions import (
+    read_image, IMAGE_EXTENSIONS, collect_paths)
 
 
 class RegionDataset(AbstractTorchDataset):
@@ -252,7 +252,7 @@ class RegionDataset(AbstractTorchDataset):
 if __name__ == '__main__':
     import albumentations as A
     from torch.utils.data import DataLoader
-    from utils.image_utils.image_functions import show_images_cv2
+    from utils.data_utils.data_functions import show_images_cv2
     from utils.torch_utils.torch_functions import (
         image_tensor_to_numpy, draw_bounding_boxes)
 

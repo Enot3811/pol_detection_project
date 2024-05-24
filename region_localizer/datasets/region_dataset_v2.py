@@ -99,7 +99,7 @@ class RegionDatasetV2(RegionDataset):
 if __name__ == '__main__':
     import albumentations as A
     from torch.utils.data import DataLoader
-    from utils.image_utils.image_functions import show_images_cv2
+    from utils.data_utils.data_functions import show_images_cv2
     from utils.torch_utils.torch_functions import (
         image_tensor_to_numpy, draw_bounding_boxes)
 

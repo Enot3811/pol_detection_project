@@ -43,10 +43,10 @@ from tqdm import tqdm
 import albumentations as A
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.image_utils.image_functions import save_image
 from utils.argparse_utils import required_length, natural_int
 from utils.torch_utils.torch_functions import random_crop
-from utils.data_utils.data_functions import collect_paths, read_volume
+from utils.data_utils.data_functions import (
+    collect_paths, read_volume, save_image)
 
 
 def main(

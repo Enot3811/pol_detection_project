@@ -14,7 +14,7 @@ from utils.cvat_utils.cvat_datasets import CvatObjectDetectionDataset
 from utils.data_utils.datasets import (
     BaseObjectDetectionAnnotation, BaseObjectDetectionSample)
 from utils.cvat_utils.cvat_functions import create_cvat_object_detection_xml
-from utils.image_utils.image_functions import read_image
+from utils.data_utils.data_functions import read_image
 
 
 class TempSample(BaseObjectDetectionSample):

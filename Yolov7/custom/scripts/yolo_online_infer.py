@@ -20,7 +20,7 @@ from Yolov7.yolov7.dataset import create_yolov7_transforms
 from utils.torch_utils.torch_functions import (
     image_tensor_to_numpy, draw_bounding_boxes)
 from mako_camera.cameras_utils import split_raw_pol
-from utils.image_utils.image_functions import read_image
+from utils.data_utils.data_functions import read_image
 
 
 def main(

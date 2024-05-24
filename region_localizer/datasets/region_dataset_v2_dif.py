@@ -10,8 +10,8 @@ import numpy as np
 sys.path.append(str(Path(__file__).parents[2]))
 from utils.torch_utils.torch_functions import random_crop
 from region_localizer.datasets.region_dataset_v2 import RegionDatasetV2
-from utils.image_utils.image_functions import read_image, IMAGE_EXTENSIONS
-from utils.data_utils.data_functions import collect_paths
+from utils.data_utils.data_functions import (
+    read_image, IMAGE_EXTENSIONS, collect_paths)
 
 
 class RegionDatasetV2Dif(RegionDatasetV2):
@@ -101,7 +101,7 @@ class RegionDatasetV2Dif(RegionDatasetV2):
 if __name__ == '__main__':
     import albumentations as A
     from torch.utils.data import DataLoader
-    from utils.image_utils.image_functions import show_images_cv2
+    from utils.data_utils.data_functions import show_images_cv2
     from utils.torch_utils.torch_functions import (
         image_tensor_to_numpy, draw_bounding_boxes)
 

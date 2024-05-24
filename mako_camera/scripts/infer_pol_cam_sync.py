@@ -9,7 +9,7 @@ from vimba import *
 import numpy as np
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.image_utils.image_functions import resize_image, normalize_to_image
+from utils.data_utils.data_functions import resize_image, normalize_to_image
 from mako_camera.cameras_utils import (
     split_raw_pol, calc_AoLP, calc_DoLP, calc_Stocks_param, hsv_pol,
     pol_intensity)

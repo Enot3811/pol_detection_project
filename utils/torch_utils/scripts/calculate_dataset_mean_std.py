@@ -8,8 +8,8 @@ import torch
 from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).parents[3]))
-from utils.image_utils.image_functions import read_image, IMAGE_EXTENSIONS
-from utils.data_utils.data_functions import collect_paths
+from utils.data_utils.data_functions import (
+    read_image, IMAGE_EXTENSIONS, collect_paths)
 
 
 def main(**kwargs):

@@ -10,7 +10,7 @@ import random
 from math import ceil
 
 sys.path.append(str(Path(__file__).parents[3]))
-from utils.image_utils.image_functions import IMAGE_EXTENSIONS
+from utils.data_utils.data_functions import IMAGE_EXTENSIONS
 from utils.data_utils.data_functions import collect_paths
 
 

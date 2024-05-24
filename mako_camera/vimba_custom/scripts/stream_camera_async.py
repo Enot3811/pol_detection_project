@@ -10,7 +10,7 @@ import cv2
 
 sys.path.append(str(Path(__file__).parents[3]))
 from mako_camera.vimba_custom.vimba_tools import get_camera, BaseStreamHandler
-from utils.image_utils.image_functions import resize_image
+from utils.data_utils.data_functions import resize_image
 
 
 class StreamHandler(BaseStreamHandler):

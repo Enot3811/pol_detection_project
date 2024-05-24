@@ -8,7 +8,7 @@ from typing import Tuple, Optional
 from random import randint
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.image_utils.image_functions import (
+from utils.data_utils.data_functions import (
     read_image, show_image_plt, save_image)
 from utils.torch_utils.torch_functions import random_crop, draw_bounding_boxes
 from utils.argparse_utils import natural_int, required_length

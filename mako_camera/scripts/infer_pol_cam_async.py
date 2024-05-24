@@ -11,7 +11,7 @@ from vimba import *
 import numpy as np
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.image_utils.image_functions import resize_image, normalize_to_image
+from utils.data_utils.data_functions import resize_image, normalize_to_image
 import mako_camera.cameras_utils as cam_func
 
 
