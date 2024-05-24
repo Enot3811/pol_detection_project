@@ -1,11 +1,10 @@
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple, Union, Callable, Optional
 import sys
 
 import torch
 from torch import Tensor
 from albumentations import BboxParams
-import numpy as np
 
 sys.path.append(str(Path(__file__).parents[2]))
 from utils.torch_utils.torch_functions import random_crop
@@ -15,12 +14,61 @@ from utils.data_utils.data_functions import (
 
 
 class RegionDatasetV2Dif(RegionDatasetV2):
-    """The same `RegionDatasetV2` but with two different images for map
-    and for crops.
-
-    First image must be named as "{sample_name}_map.{ext}"
-    and second as "{sample_name}_crop.{ext}."
+    """`RegionDatasetV2` with ability to get two different images for map
+    and crop.
     """
+
+    def __init__(
+        self, dset_pth: Union[str, Path],
+        min_crop_size: Union[int, Tuple[int, int]],
+        max_crop_size: Union[int, Tuple[int, int]],
+        result_size: Union[int, Tuple[int, int]],
+        num_crops: int = 1,
+        transforms: Optional[Callable[..., Any]] = None,
+        piece_transforms: Optional[Callable[..., Any]] = None,
+        map_grayscale: bool = False,
+        crop_grayscale: bool = False
+    ):
+        """Initialize dataset.
+
+        Parameters
+        ----------
+        dset_pth : Union[str, Path]
+            A path to the dataset directory.
+        min_crop_size : Tuple[int, int]
+            Minimum size for piece random crop.
+            It should be either min size of square as `int`
+            or min size of rectangle as `tuple` in format `(h, w)`.
+            Consistency in format is required with `max_crop_size`.
+        max_crop_size : Tuple[int, int]
+            Maximum size for piece random crop.
+            It should be either max size of square as `int`
+            or max size of rectangle as `tuple` in format `(h, w)`.
+            Consistency in format is required with `min_crop_size`.
+        result_size : Union[int, Tuple[int, int]]
+            Result size that is used in resize of result images
+            in `int` or `(h, w)` format.
+        num_crops : int, optional
+            How many crops to make and return for one map image.
+            By default is `1`.
+        transforms : Optional[Callable], optional
+            Dataset transforms. Performs on both maps and pieces images.
+            By default is `None`.
+        piece_transforms : Optional[Callable], optional
+            Pieces transforms. performs only on pieces images.
+            By default is `None`.
+        map_grayscale : bool, optional
+            Whether to read map images as 1-ch grayscale.
+            By default is `False`.
+        crop_grayscale : bool, optional
+            Whether to read crop images as 1-ch grayscale.
+            By default is `False`.
+        """
+        super().__init__(
+            dset_pth, min_crop_size, max_crop_size, result_size, num_crops,
+            transforms, piece_transforms)
+        self.map_grayscale = map_grayscale
+        self.crop_grayscale = crop_grayscale
 
     def _collect_samples(self, dset_pth: Path) -> List[Path]:
         """Collect sample dirs.
@@ -64,20 +112,12 @@ class RegionDatasetV2Dif(RegionDatasetV2):
             self.samples[index],
             file_extensions=IMAGE_EXTENSIONS + ['npy'])
         # If name of image contain _reg suffix
-        map_pth = next(filter(
-            lambda pth: pth.name.split('.')[-2][-4::1] == '_map', pths))
+        map_pth = next(filter(lambda pth: pth.stem[-4::1] == '_map', pths))
         # If name of image contain _crop suffix
-        crop_pth = next(filter(
-            lambda pth: pth.name.split('.')[-2][-5::1] == '_crop', pths))
+        crop_pth = next(filter(lambda pth: pth.stem[-5::1] == '_crop', pths))
 
-        if map_pth.name.split('.')[-1] == 'npy':
-            map_img = np.load(map_pth)
-        else:
-            map_img = read_image(map_pth)
-        if crop_pth.name.split('.')[-1] == 'npy':
-            crop_img = np.load(crop_pth)
-        else:
-            crop_img = read_image(crop_pth)
+        map_img = read_image(map_pth, self.map_grayscale)
+        crop_img = read_image(crop_pth, self.crop_grayscale)
 
         bboxes = []
         pieces_imgs = []
@@ -99,6 +139,7 @@ class RegionDatasetV2Dif(RegionDatasetV2):
     
 
 if __name__ == '__main__':
+    import numpy as np
     import albumentations as A
     from torch.utils.data import DataLoader
     from utils.data_utils.data_functions import show_images_cv2
@@ -106,22 +147,26 @@ if __name__ == '__main__':
         image_tensor_to_numpy, draw_bounding_boxes)
 
     # Overall params
-    image_dir = ('data/rastr_osm_dataset/train')
+    image_dir = ('data/region_localizer/rastr_osm_dataset/train')
     b_size = 2
     num_crops = 4
-    device = torch.device('cuda')
+    bbox_color = (255, 0, 0)
     # Dataset sizes params
     img_size = (2464, 2464)
     result_size = (900, 900)
-    max_crop_size = int(img_size[0] * 0.8)
-    min_crop_size = int(img_size[0] * 0.5)
+    max_crop_size = int(img_size[0] * 0.5)
+    min_crop_size = int(img_size[0] * 0.2)
     rectangle = False
+    map_grayscale = True
+    crop_grayscale = False
     # Transforms params
     rotate = False
     blur = False
     # Piece transforms
     piece_blur = True
     piece_color_jitter = True
+
+    map_ch = 1 if map_grayscale else 3
 
     if rectangle:
         min_crop_size = (min_crop_size, min_crop_size)
@@ -158,7 +203,7 @@ if __name__ == '__main__':
     # Get dataset and dloader
     dset = RegionDatasetV2Dif(
         image_dir, min_crop_size, max_crop_size, result_size, num_crops,
-        device, transforms, piece_transforms)
+        transforms, piece_transforms, map_grayscale, crop_grayscale)
     dloader = DataLoader(
         dset, batch_size=b_size, collate_fn=RegionDatasetV2Dif.collate_func)
     
@@ -175,9 +220,13 @@ if __name__ == '__main__':
             else:
                 bbox = target['boxes']
 
-            map_img = stacked_img[..., :3]
-            region_img = stacked_img[..., 3:]
-            boxes_img = draw_bounding_boxes(map_img, [bbox])
+            map_img = stacked_img[..., :map_ch]
+            region_img = stacked_img[..., map_ch:]
+            if map_grayscale:
+                # Add 3-ch for colorful bboxes
+                if map_img.shape[-1] == 1:
+                    map_img = np.repeat(map_img, 3, axis=2)
+            boxes_img = draw_bounding_boxes(map_img, [bbox], color=bbox_color)
 
             print('Bbox:', bbox, 'h_size:', bbox[3] - bbox[1],
                   'w_size:', bbox[2] - bbox[0])
