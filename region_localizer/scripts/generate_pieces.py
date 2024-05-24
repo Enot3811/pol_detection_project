@@ -43,10 +43,10 @@ from tqdm import tqdm
 import albumentations as A
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.image_utils.image_functions import (
-    collect_images_paths, read_image, save_image)
+from utils.image_utils.image_functions import read_image, save_image
 from utils.argparse_utils import required_length, natural_int
 from utils.torch_utils.torch_functions import random_crop
+from utils.data_utils.data_functions import collect_paths
 
 
 def main(
@@ -73,8 +73,8 @@ def main(
         transforms = None
 
     # Get images
-    regions_pths = collect_images_paths(
-        image_dir, image_extensions=('jpg', 'png', 'npy'))
+    regions_pths = collect_paths(
+        image_dir, file_extensions=('jpg', 'png', 'npy'))
     regions_pths.sort()
 
     # Check result dir

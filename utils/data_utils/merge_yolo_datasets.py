@@ -20,13 +20,14 @@ import sys
 import shutil
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.image_utils.image_functions import collect_images_paths
+from utils.data_utils.data_functions import collect_paths
+from utils.image_utils.image_functions import IMAGE_EXTENSIONS
 
 
 def main(dsets_pths: List[Path], dst_pth: Path):
     
     for dset_pth in dsets_pths:
-        img_pths = collect_images_paths(dset_pth)
+        img_pths = collect_paths(dset_pth, IMAGE_EXTENSIONS)
         try:
             # Try to sort by index in name
             img_pths = sorted(img_pths, key=lambda pth: int(pth.name[:-4]))

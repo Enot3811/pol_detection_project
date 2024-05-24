@@ -9,6 +9,11 @@ from numpy.typing import NDArray
 import cv2
 import matplotlib.pyplot as plt
 
+from utils.data_utils.data_functions import prepare_path
+
+
+IMAGE_EXTENSIONS: List[str] = ['jpg', 'jpeg', 'JPG', 'png', 'PNG']
+
 
 def read_image(path: Union[Path, str], grayscale: bool = False) -> NDArray:
     """Read the image to a numpy array.
@@ -27,15 +32,10 @@ def read_image(path: Union[Path, str], grayscale: bool = False) -> NDArray:
 
     Raises
     ------
-    FileNotFoundError
-        Raise when image file is not found.
     ValueError
         Raise when cv2 could not read the image.
     """
-    if isinstance(path, str):
-        path = Path(path)
-    if not path.exists():
-        raise FileNotFoundError(f'Did not find the image "{str(path)}".')
+    path = prepare_path(path)
     color_flag = cv2.IMREAD_GRAYSCALE if grayscale else cv2.IMREAD_COLOR
     img = cv2.imread(str(path), color_flag)
     if img is None:
@@ -215,39 +215,11 @@ def save_image(img: NDArray, path: Union[Path, str]) -> None:
     RuntimeError
         Could not save image.
     """
-    if isinstance(path, str):
-        path = Path(path)
+    path = Path(path) if isinstance(path, str) else path
     path.parent.mkdir(parents=True, exist_ok=True)
     success = cv2.imwrite(str(path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
     if not success:
         raise RuntimeError('Could not save image.')
-    
-
-def collect_images_paths(
-    image_dir: Union[str, Path],
-    image_extensions: Tuple[str] = ('jpg', 'JPG', 'jpeg', 'png', 'PNG', 'bmp')
-) -> List[Path]:
-    """Collect all images paths from given directory.
-
-    Collector can be configured with `image_extensions` argument.
-
-    Parameters
-    ----------
-    image_dir : Union[str, Path]
-        Directory from which image paths will be collected.
-    image_extensions : Tuple[str], optional
-        Extension of collecting images.
-        By default is `('jpg', 'JPG', 'jpeg', 'png', 'PNG', 'bmp')`.
-
-    Returns
-    -------
-    List[Path]
-        Collected image paths.
-    """
-    paths: List[Path] = []
-    for ext in image_extensions:
-        paths.extend(image_dir.glob(f'*.{ext}'))
-    return paths
 
 
 def get_sliding_windows(

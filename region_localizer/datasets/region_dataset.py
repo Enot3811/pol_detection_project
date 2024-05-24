@@ -12,7 +12,8 @@ sys.path.append(str(Path(__file__).parents[2]))
 from utils.torch_utils.torch_functions import (
     random_crop, image_numpy_to_tensor)
 from utils.torch_utils.datasets import AbstractTorchDataset
-from utils.image_utils.image_functions import read_image, collect_images_paths
+from utils.image_utils.image_functions import read_image, IMAGE_EXTENSIONS
+from utils.data_utils.data_functions import collect_paths
 
 
 class RegionDataset(AbstractTorchDataset):
@@ -86,7 +87,7 @@ class RegionDataset(AbstractTorchDataset):
         return super()._parse_dataset_pth(dset_pth)
         
     def _collect_samples(self, dset_pth: Path) -> List[Path]:
-        return collect_images_paths(dset_pth)
+        return collect_paths(dset_pth, IMAGE_EXTENSIONS)
     
     def get_sample(self, index: int) -> Dict[str, Any]:
         """Get sample from region dataset.

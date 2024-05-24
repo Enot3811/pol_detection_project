@@ -10,14 +10,15 @@ import random
 from math import ceil
 
 sys.path.append(str(Path(__file__).parents[3]))
-from utils.image_utils.image_functions import collect_images_paths
+from utils.image_utils.image_functions import IMAGE_EXTENSIONS
+from utils.data_utils.data_functions import collect_paths
 
 
 def main(
     images_dir: Path, save_dir: Path, proportions: List[float],
     random_seed: int
 ):
-    img_pths = collect_images_paths(images_dir)
+    img_pths = collect_paths(images_dir, IMAGE_EXTENSIONS)
 
     # Shuffle and split
     random.seed(random_seed)

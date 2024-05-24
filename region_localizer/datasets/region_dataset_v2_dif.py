@@ -10,7 +10,8 @@ import numpy as np
 sys.path.append(str(Path(__file__).parents[2]))
 from utils.torch_utils.torch_functions import random_crop
 from region_localizer.datasets.region_dataset_v2 import RegionDatasetV2
-from utils.image_utils.image_functions import read_image, collect_images_paths
+from utils.image_utils.image_functions import read_image, IMAGE_EXTENSIONS
+from utils.data_utils.data_functions import collect_paths
 
 
 class RegionDatasetV2Dif(RegionDatasetV2):
@@ -59,9 +60,9 @@ class RegionDatasetV2Dif(RegionDatasetV2):
             `(*result_size, 3)`
             - "bboxes" - `list of FloatBbox`.
         """
-        pths = collect_images_paths(
+        pths = collect_paths(
             self.samples[index],
-            image_extensions=('jpg', 'JPG', 'png', 'PNG', 'bmp', 'npy'))
+            file_extensions=IMAGE_EXTENSIONS + ['npy'])
         # If name of image contain _reg suffix
         map_pth = next(filter(
             lambda pth: pth.name.split('.')[-2][-4::1] == '_map', pths))

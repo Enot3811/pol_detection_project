@@ -18,7 +18,8 @@ import cv2
 
 sys.path.append(str(Path(__file__).parents[3]))
 from mako_camera.cameras_utils import split_raw_pol
-from utils.image_utils.image_functions import read_image, collect_images_paths
+from utils.image_utils.image_functions import read_image, IMAGE_EXTENSIONS
+from utils.data_utils.data_functions import collect_paths
 from utils.torch_utils.torch_functions import draw_bounding_boxes
 from Yolov7.yolov7.dataset import create_yolov7_transforms
 from Yolov7.custom.model_utils import (  # noqa
@@ -72,7 +73,7 @@ def main(
             samples_pths = list(samples_pth.glob('*.npy'))
         # RGB
         else:
-            samples_pths = collect_images_paths(samples_pth)
+            samples_pths = collect_paths(samples_pth, IMAGE_EXTENSIONS)
 
     elif samples_pth.is_file():
         samples_pths = [samples_pth]
