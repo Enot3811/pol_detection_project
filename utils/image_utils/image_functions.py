@@ -44,23 +44,42 @@ def read_image(path: Union[Path, str], grayscale: bool = False) -> NDArray:
     return img
 
 
-def resize_image(image: NDArray, new_size: Tuple[int, int]) -> NDArray:
-    """Resize image to given size.
+def resize_image(
+    image: NDArray, new_size: Tuple[int, int],
+    interpolation: int = cv2.INTER_LINEAR
+) -> NDArray:
+    """Resize image to a given size.
 
     Parameters
     ----------
     image : NDArray
-        Image to resize.
+        The image to resize.
     new_size : Tuple[int, int]
-        Tuple containing new image size.
+        The requested size in `(h, w)` format.
+    interpolation : int, optional
+        cv2 interpolation flag. By default equals `cv2.INTER_LINEAR`.
 
     Returns
     -------
     NDArray
-        Resized image
+        The resized image
+
+    Raises
+    ------
+    ValueError
+        Raise when got incorrect size.
     """
-    return cv2.resize(
-        image, new_size, None, None, None, interpolation=cv2.INTER_LINEAR)
+    if len(new_size) != 2 or new_size[0] <= 0 or new_size[1] <= 0:
+        raise ValueError(
+            f'New size is required to be "(h, w)" but got {new_size}.')
+    # Reverse to (w, h) for cv2
+    new_size = new_size[::-1]
+    resized = cv2.resize(image, new_size, None, None, None,
+                         interpolation=interpolation)
+    # If resize 1-channel image, channel dimension will be lost
+    if len(resized.shape) != len(image.shape) and image.shape[-1] == 1:
+        resized = resized[..., None]
+    return resized
 
 
 def show_image_plt(
