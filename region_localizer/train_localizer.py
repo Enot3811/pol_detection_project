@@ -155,10 +155,10 @@ def main(config_pth: Path):
         raise ValueError(f'Unrecognized dataset {config["dataset_type"]}')
 
     train_dset = dataset_cls(
-        train_dir, **config['train_dataset_params'], device=device,
+        train_dir, **config['train_dataset_params'],
         transforms=train_transforms, piece_transforms=train_piece_transforms)
     val_dset = dataset_cls(
-        val_dir, **config['val_dataset_params'], device=device,
+        val_dir, **config['val_dataset_params'],
         transforms=val_transforms, piece_transforms=val_piece_transforms)
 
     train_loader = DataLoader(train_dset,
@@ -225,6 +225,16 @@ def main(config_pth: Path):
         # Train epoch
         model.train()
         for batch in tqdm(train_loader, 'Train step'):
+            # TODO сделать отдельный преобразователь для батчей
+            images = []
+            targets = []
+            for image, target in zip(batch[0], batch[1]):
+                images.append(image.to(device=device))
+                targets.append({
+                    'boxes': target['boxes'].to(device=device),
+                    'labels': target['labels'].to(device=device)
+                })
+            batch = (images, targets)
             with torch.autocast(device_type=str(device), dtype=torch.float16,
                                 enabled=config['use_amp']):
                 losses, predicts = model(*batch)
@@ -258,6 +268,17 @@ def main(config_pth: Path):
         with torch.no_grad():
             model.eval()
             for batch in tqdm(val_loader, 'Val step'):
+                # TODO сделать отдельный преобразователь для батчей
+                images = []
+                targets = []
+                for image, target in zip(batch[0], batch[1]):
+                    images.append(image.to(device=device))
+                    targets.append({
+                        'boxes': target['boxes'].to(device=device),
+                        'labels': target['labels'].to(device=device)
+                    })
+                batch = (images, targets)
+
                 losses, predicts = model(*batch)
                 targets = batch[-1]
 
