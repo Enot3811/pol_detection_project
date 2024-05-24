@@ -43,10 +43,10 @@ from tqdm import tqdm
 import albumentations as A
 
 sys.path.append(str(Path(__file__).parents[2]))
-from utils.image_utils.image_functions import read_image, save_image
+from utils.image_utils.image_functions import save_image
 from utils.argparse_utils import required_length, natural_int
 from utils.torch_utils.torch_functions import random_crop
-from utils.data_utils.data_functions import collect_paths
+from utils.data_utils.data_functions import collect_paths, read_volume
 
 
 def main(
@@ -87,10 +87,7 @@ def main(
 
     # Generate pieces
     for reg_pth in tqdm(regions_pths, desc='Generate pieces'):
-        if reg_pth.suffix == '.npy':
-            reg_img = np.load(reg_pth)
-        else:
-            reg_img = read_image(reg_pth)
+        reg_img = read_volume(reg_pth)
         pieces_dir = result_dir / reg_pth.stem
 
         for i in range(num_pieces):

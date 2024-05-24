@@ -4,6 +4,11 @@
 from typing import Union, List, Iterable
 from pathlib import Path
 
+import numpy as np
+from numpy.typing import NDArray
+
+from utils.image_utils.image_functions import read_image, IMAGE_EXTENSIONS
+
 
 def prepare_path(path: Union[Path, str]) -> Path:
     """Check an existence of the given path and convert it to `Path`.
@@ -46,3 +51,32 @@ def collect_paths(
     for ext in file_extensions:
         paths.extend(image_dir.glob(f'*.{ext}'))
     return paths
+
+
+def read_volume(path: Union[Path, str]) -> NDArray:
+    """Read a volume from a npy or image file.
+
+    Parameters
+    ----------
+    path : Union[Path, str]
+        A path to the volume file.
+
+    Returns
+    -------
+    NDArray
+        The read volume.
+
+    Raises
+    ------
+    ValueError
+        Raise when given path does not have proper extension.
+    """
+    path = prepare_path(path)
+    if path.suffix == '.npy':
+        vol = np.load(path)
+    elif path.suffix[1:] in IMAGE_EXTENSIONS:
+        vol = read_image(path)
+    else:
+        raise ValueError(
+            f'The file extension of the path "{str(path)}" is not proper.')
+    return vol

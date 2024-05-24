@@ -11,11 +11,10 @@ import sys
 from typing import List, Optional, Dict, Union
 import shutil
 
-import numpy as np
 from numpy.typing import NDArray
 
 sys.path.append(str(Path(__file__).parents[3]))
-from utils.image_utils.image_functions import read_image
+from utils.data_utils.data_functions import read_volume
 from utils.torch_utils.torch_functions import draw_bounding_boxes
 from utils.cvat_utils.cvat_functions import create_cvat_object_detection_xml
 
@@ -69,10 +68,7 @@ class BaseObjectDetectionSample:
         NDArray
             The source image of this sample.
         """
-        if self._img_pth.name[-4:] == '.npy':
-            image = np.load(self._img_pth)
-        else:
-            image = read_image(self._img_pth)
+        image = read_volume(self._img_pth)
         return image
     
     def get_image_with_bboxes(self) -> NDArray:
