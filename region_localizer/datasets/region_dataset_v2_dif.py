@@ -109,8 +109,7 @@ class RegionDatasetV2Dif(RegionDatasetV2):
             - "bboxes" - `list of FloatBbox`.
         """
         pths = collect_paths(
-            self.samples[index],
-            file_extensions=IMAGE_EXTENSIONS + ['npy'])
+            self.samples[index], file_extensions=IMAGE_EXTENSIONS)
         # If name of image contain _reg suffix
         map_pth = next(filter(lambda pth: pth.stem[-4::1] == '_map', pths))
         # If name of image contain _crop suffix
