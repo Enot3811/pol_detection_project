@@ -11,36 +11,39 @@ import matplotlib.pyplot as plt
 
 
 def read_image(path: Union[Path, str], grayscale: bool = False) -> NDArray:
-    """Read image to numpy array.
+    """Read the image to a numpy array.
 
     Parameters
     ----------
     path : Union[Path, str]
-        Path to image file
+        A path to the image file.
     grayscale : bool, optional
-        Whether read image in grayscale, by default False
+        Whether read image in grayscale (1-ch image), by default is `False`.
 
     Returns
     -------
     NDArray
-        Array containing read image.
+        The array containing the read image.
 
     Raises
     ------
     FileNotFoundError
-        Did not find image.
+        Raise when image file is not found.
     ValueError
-        Image reading is not correct.
+        Raise when cv2 could not read the image.
     """
     if isinstance(path, str):
         path = Path(path)
     if not path.exists():
-        raise FileNotFoundError(f'Did not find image {path}.')
-    flag = cv2.IMREAD_GRAYSCALE if grayscale else cv2.IMREAD_COLOR
-    img = cv2.imread(str(path), flag)
+        raise FileNotFoundError(f'Did not find the image "{str(path)}".')
+    color_flag = cv2.IMREAD_GRAYSCALE if grayscale else cv2.IMREAD_COLOR
+    img = cv2.imread(str(path), color_flag)
     if img is None:
-        raise ValueError('Image reading is not correct.')
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        raise ValueError('cv2 could not read the image.')
+    if grayscale:
+        img = img[..., None]  # Add chanel dimension
+    else:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert to RGB
     return img
 
 
