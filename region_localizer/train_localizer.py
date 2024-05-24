@@ -19,7 +19,7 @@ import albumentations as A
 sys.path.append(str(Path(__file__).parents[1]))
 from region_localizer.models import RetinaRegionLocalizer, ModifiedRetinaV2
 from region_localizer.datasets import (
-    RegionDataset, RegionDatasetV2, RegionDatasetV2Dif)
+    RegionDataset, RegionDatasetV2, RegionDatasetV2Dif, RegionDatasetV2Rnd)
 
 
 class LossMetric(Metric):
@@ -151,6 +151,8 @@ def main(config_pth: Path):
         dataset_cls = RegionDatasetV2
     elif config['dataset_type'] == 'region_dataset_v2_dif':
         dataset_cls = RegionDatasetV2Dif
+    elif config['dataset_type'] == 'region_dataset_v2_rnd':
+        dataset_cls = RegionDatasetV2Rnd
     else:
         raise ValueError(f'Unrecognized dataset {config["dataset_type"]}')
 
