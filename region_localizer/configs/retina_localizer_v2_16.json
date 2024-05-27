@@ -1,0 +1,57 @@
+{
+    "random_seed": 42,
+
+    "continue_training": false,
+    "device": "cuda",
+    "lr": 0.0001,
+    "weight_decay": 0.0005,
+    "use_amp": true,
+    "n_epoch": 2500,
+    "work_dir": "region_localizer/work_dir/retina_localizer_v2_16",
+
+    "architecture": "modified_retina_v2",
+    "pretrained": true,
+    "num_classes": 2,
+    "input_channels": 6,
+
+    "dataset": "data/region_localizer/rastr_satellite_dataset/",
+    "dataset_type": "region_dataset_v2_rnd",
+    "batch_size": 1,
+    "train_dataset_params": {
+        "min_crop_size": 492,
+        "max_crop_size": 1232,
+        "result_size": [1024, 1024],
+        "num_crops": 4
+    },
+    "val_dataset_params": {
+        "min_crop_size": 492,
+        "max_crop_size": 1232,
+        "result_size": [1024, 1024],
+        "num_crops": 4
+    },
+    "shuffle_train": true,
+    "shuffle_val": false,
+
+    "train_transforms": {
+        "transforms": {
+            "rotation": true,
+            "blur": false
+        },
+        "piece_transforms": {
+            "blur": true,
+            "color_jitter": true
+        }
+    },
+    "val_transforms": {
+        "transforms": {
+            "rotation": false,
+            "blur": false
+        },
+        "piece_transforms": {
+            "blur": false,
+            "color_jitter": false
+        }
+    },
+    "image_mean": [0.485, 0.456, 0.406, 0.485, 0.456, 0.406],
+    "image_std": [0.229, 0.224, 0.225, 0.229, 0.224, 0.225]
+}
