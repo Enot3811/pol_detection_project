@@ -147,35 +147,31 @@ def show_images_cv2(
         Pressed key code.
     """
     key_code = -1
-    try:
-        if isinstance(images, (List, tuple)):
-            if isinstance(window_title, str):
-                one_title = True
-            elif (isinstance(window_title, list) and
-                  len(window_title) == len(images)):
-                one_title = False
-            else:
-                raise TypeError(
-                    '"window_title" must be str or List[str] with the same '
-                    'length as the list of images.')
-            for i, image in enumerate(images):
-                if one_title:
-                    title = f'{window_title}_{i}'
-                else:
-                    title = window_title[i]
-                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-                cv2.imshow(title, image)
-        elif isinstance(images, np.ndarray):
-            images = cv2.cvtColor(images, cv2.COLOR_RGB2BGR)
-            cv2.imshow(window_title, images)
+    if isinstance(images, (List, tuple)):
+        if isinstance(window_title, str):
+            one_title = True
+        elif (isinstance(window_title, list) and
+                len(window_title) == len(images)):
+            one_title = False
         else:
-            raise TypeError('"images" must be NDArray or List of NDArrays, '
-                            f'but got {type(images)}')
-        key_code = cv2.waitKey(delay)
-        if destroy_windows:
-            cv2.destroyAllWindows
-    except KeyboardInterrupt:
-        # Free cv2 windows if interrupted
+            raise TypeError(
+                '"window_title" must be str or List[str] with the same '
+                'length as the list of images.')
+        for i, image in enumerate(images):
+            if one_title:
+                title = f'{window_title}_{i}'
+            else:
+                title = window_title[i]
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            cv2.imshow(title, image)
+    elif isinstance(images, np.ndarray):
+        images = cv2.cvtColor(images, cv2.COLOR_RGB2BGR)
+        cv2.imshow(window_title, images)
+    else:
+        raise TypeError('"images" must be NDArray or List of NDArrays, '
+                        f'but got {type(images)}')
+    key_code = cv2.waitKey(delay)
+    if destroy_windows:
         cv2.destroyAllWindows()
     return key_code
 
