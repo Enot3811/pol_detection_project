@@ -4,7 +4,7 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Sequence, Union, Any, Tuple, Dict, Callable, Optional
 
-from utils.torch_utils.datasets import AbstractTorchDataset
+from .abstract_torch_dataset import AbstractTorchDataset
 
 
 class AbstractClassificationDataset(AbstractTorchDataset):

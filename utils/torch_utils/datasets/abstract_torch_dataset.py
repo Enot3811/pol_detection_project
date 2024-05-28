@@ -5,6 +5,8 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset
 
+from ...data_utils.data_functions import prepare_path
+
 
 class AbstractTorchDataset(ABC, Dataset):
     """Abstract class for any custom torch dataset.
@@ -47,16 +49,7 @@ class AbstractTorchDataset(ABC, Dataset):
         FileNotFoundError
             Raise when `dset_pth` does not exists.
         """
-        if isinstance(dset_pth, str):
-            dset_pth = Path(dset_pth)
-        elif not isinstance(dset_pth, Path):
-            raise ValueError(
-                'Dataset path required to be str or Path '
-                f'but got {type(dset_pth)}.')
-        if not dset_pth.exists():
-            raise FileNotFoundError(
-                f'Given path "{dset_pth}" does not exist.')
-        return dset_pth
+        return prepare_path(dset_pth)
     
     @abstractmethod
     def _collect_samples(self, dset_pth: Path) -> Sequence[Any]:

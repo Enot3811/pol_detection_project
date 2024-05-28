@@ -17,12 +17,11 @@ from pathlib import Path
 from typing import Union, Any, List, Tuple, Dict, Optional
 import xml.etree.ElementTree as ET
 
-import numpy as np
 import torch
 
-from utils.torch_utils.datasets import AbstractClassificationDataset
-from utils.torch_utils.torch_functions import FloatBbox, image_numpy_to_tensor
-from utils.image_utils.image_functions import read_image
+from .abstract_classification_dataset import AbstractClassificationDataset
+from ..torch_functions import FloatBbox, image_numpy_to_tensor
+from ...data_utils.data_functions import read_volume
 
 
 class CvatObjectDetectionDataset(AbstractClassificationDataset):
@@ -32,8 +31,6 @@ class CvatObjectDetectionDataset(AbstractClassificationDataset):
     ----------
     dset_pth : Union[Path, str]
         Path to CVAT dataset directory.
-    device : torch.device, optional
-        Device for dataset samples. By default is `torch.device('cpu')`.
     transforms : Callable, optional
         Transforms that performs on sample.
         Required that it has `albumentations.Compose` like structure.
@@ -65,6 +62,7 @@ class CvatObjectDetectionDataset(AbstractClassificationDataset):
         """
         dset_pth = super()._parse_dataset_pth(dset_pth)
         self.image_dir = dset_pth / 'images'
+        return dset_pth
     
     def _collect_samples(self, dset_pth: Path) -> List[Dict[str, Any]]:
         """Parse CVAT annotations.xml and make `list` of samples.
@@ -116,7 +114,7 @@ class CvatObjectDetectionDataset(AbstractClassificationDataset):
                 img_bboxes_pts.append((x1, y1, x2, y2))
             samples.append({
                 'img_pth': img_pth,
-                'classes': img_labels,
+                'labels': img_labels,
                 'bboxes': img_bboxes_pts,
                 'shape': shape
             })
@@ -147,7 +145,7 @@ class CvatObjectDetectionDataset(AbstractClassificationDataset):
         """Get CVAT object detection sample.
 
         Sample represented as a dict that contains "image" `ndarray`,
-        "bboxes" `list[list[float]]`, "classes" `list[int]`, "img_pth" `Path`
+        "bboxes" `list[list[float]]`, "labels" `list[int]`, "img_pth" `Path`
         and "shape" `tuple[int, int]`.
 
         Parameters
@@ -162,20 +160,17 @@ class CvatObjectDetectionDataset(AbstractClassificationDataset):
         """
         sample_annots = self.samples[index]
         img_pth = sample_annots['img_pth']
-        classes = sample_annots['classes']
+        labels = sample_annots['labels']
         bboxes = sample_annots['bboxes']
         shape = sample_annots['shape']
         # Convert str labels to indexes
-        classes = list(map(lambda label: self._class_to_index[label], classes))
+        labels = list(map(lambda label: self._class_to_index[label], labels))
         # Check extension of image and load it
-        if img_pth.name[-4:] == '.npy':
-            image = np.load(img_pth)
-        else:
-            image = read_image(img_pth)
+        image = read_volume(img_pth)
         sample = {
             'image': image,
             'bboxes': bboxes,
-            'classes': classes,
+            'labels': labels,
             'img_pth': img_pth,
             'shape': shape}
         return sample
@@ -198,14 +193,12 @@ class CvatObjectDetectionDataset(AbstractClassificationDataset):
         Dict[str, Any]
             Converted sample.
         """
-        # Convert image, bboxes and classes to tensor on passed device
-        image_numpy_to_tensor(sample['image'], device=self.device)
+        # Convert image, bboxes and classes to tensor
+        image_numpy_to_tensor(sample['image'])
         sample['image'] = torch.tensor(
-            sample['image'], dtype=torch.float32, device=self.device) / 255
-        sample['bboxes'] = torch.tensor(
-            sample['bboxes'], dtype=torch.float32, device=self.device)
-        sample['classes'] = torch.tensor(
-            sample['classes'], dtype=torch.int64, device=self.device)
+            sample['image'], dtype=torch.float32) / 255
+        sample['bboxes'] = torch.tensor(sample['bboxes'], dtype=torch.float32)
+        sample['classes'] = torch.tensor(sample['classes'], dtype=torch.int64)
         return sample
     
     def apply_transforms(
@@ -224,12 +217,13 @@ class CvatObjectDetectionDataset(AbstractClassificationDataset):
             Transformed sample.
         """
         # Using albumentations transforms
-        transformed = self.transforms(image=sample['image'],
-                                      bboxes=sample['bboxes'],
-                                      classes=sample['classes'])
-        sample['image'] = transformed['image']  # ArrayLike
-        sample['bboxes'] = transformed['bboxes']  # list[list[float]]
-        sample['classes'] = transformed['classes']  # list[int]
+        if self.transforms:
+            transformed = self.transforms(image=sample['image'],
+                                          bboxes=sample['bboxes'],
+                                          classes=sample['labels'])
+            sample['image'] = transformed['image']  # ArrayLike
+            sample['bboxes'] = transformed['bboxes']  # list[list[float]]
+            sample['labels'] = transformed['labels']  # list[int]
         return sample
     
     def get_labels_colors(self) -> Dict[str, Tuple[int, int, int]]:
@@ -241,3 +235,9 @@ class CvatObjectDetectionDataset(AbstractClassificationDataset):
             Dict that contains labels as keys and "color" as values.
         """
         return self._label_to_color
+    
+    @staticmethod
+    def collate_func(batch: List[Dict[str, Any]]) -> Any:
+        # TODO check and implement
+        print()
+        return batch
