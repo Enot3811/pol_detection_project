@@ -1,17 +1,22 @@
-"""Скрипт для обучения yolov7."""
+"""Inference test for `PolarizationObjectDetectionDataset`.
+
+It can show samples from `PolarizationObjectDetectionDataset` and
+subsequent `MosaicMixupDataset` and `Yolov7Dataset`.
+"""
 
 
-import sys
 from pathlib import Path
+import sys
 
 from torchvision.ops import box_convert
 import albumentations as A
+import cv2
 
 sys.path.append(str(Path(__file__).parents[4]))
 from Yolov7.yolov7.dataset import Yolov7Dataset, create_yolov7_transforms
 from Yolov7.yolov7.mosaic import (
     MosaicMixupDataset, create_post_mosaic_transform)
-from Yolov7.custom.datasets import TankDetectionDataset
+from Yolov7.custom.datasets import PolarizationObjectDetectionDataset
 from utils.data_utils.data_functions import show_images_cv2
 from utils.torch_utils.torch_functions import (
     image_tensor_to_numpy, draw_bounding_boxes)
@@ -50,7 +55,7 @@ def main(
                                  label_fields=['classes']))
 
     # Get datasets and loaders
-    dset = TankDetectionDataset(
+    dset = PolarizationObjectDetectionDataset(
         dset_dir, polarization=polarization)
 
     mosaic_mixup_dset = MosaicMixupDataset(
@@ -71,12 +76,9 @@ def main(
             mosaic_sample)
         yolo_img, yolo_labels, yolo_id, yolo_shape = yolo_sample
 
+        print(dset.img_id_to_name[orig_id])
+
         np_yolo_img = image_tensor_to_numpy(yolo_img)
-        titles = [
-            'orig_img ' + str(orig_shape),
-            'mosaic_img ' + str(mosaic_shape),
-            'yolo_img ' + str(yolo_shape)
-        ]
 
         res_orig = resize_func(
             image=orig_img, bboxes=orig_bboxes, classes=orig_cls)
@@ -100,14 +102,17 @@ def main(
         np_yolo_img = draw_bounding_boxes(np_yolo_img, yolo_bboxes)
 
         key_code = show_images_cv2(
-            [res_orig_img, res_mosaic_img, np_yolo_img], titles)
+            [res_orig_img, res_mosaic_img, np_yolo_img],
+            ['orig_img', 'mosaic_img', 'yolo_img'],
+            destroy_windows=False)
         if key_code == 27:
+            cv2.destroyAllWindows()
             break
 
 
 if __name__ == "__main__":
     # Configs
-    dset_dir = Path('data/tank_5set_rgb')
+    dset_dir = Path('data/tank/train_tank_rgb/train')
     input_size = 640
     polarization = False
     random_crop = True

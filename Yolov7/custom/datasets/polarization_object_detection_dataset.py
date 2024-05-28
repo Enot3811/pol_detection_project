@@ -1,4 +1,9 @@
-"""Датасет для обнаружения танков в rgb и pol."""
+"""Polarization object detection dataset in CVAT format for yolo project.
+
+Samples format of this dataset is compatible to use in yolo mosaic dataset.
+It's required that this dataset returns an image, a bounding boxes,
+classes ids, an image id, original hw of the image.
+"""
 
 
 from pathlib import Path
@@ -14,23 +19,9 @@ from mako_camera.cameras_utils import split_raw_pol
 class PolarizationObjectDetectionDataset(CvatObjectDetectionDataset):
     """Polarization object detection dataset in CVAT format for yolo project.
 
-    Samples format of this dataset is compatible to use in yolo mosaic dataset.
+    Sample format of this dataset is compatible to use in `MosaicMixupDataset`.
     It's required that this dataset returns an image, a bounding boxes,
     classes ids, an image id, original hw of the image.
-
-    Parameters
-    ----------
-    dset_pth : Union[Path, str]
-        Path to CVAT dataset directory.
-    transforms : Callable, optional
-        Transforms that performs on sample.
-        Required that it has `albumentations.Compose` like structure.
-        By default is `None`.
-    class_to_index : Dict[str, int], optional
-        User-defined class to index mapping. It required that this dict
-        contains all classes represented in the dataset. By default is `None`.
-    polarization : bool, optional
-        Is this a polarization dataset or RGB. By default is False (RGB).
     """
     
     def __init__(
@@ -40,19 +31,36 @@ class PolarizationObjectDetectionDataset(CvatObjectDetectionDataset):
         class_to_index: Dict[str, int] = None,
         polarization: bool = False
     ) -> None:
+        """Initialize `PolarizationObjectDetectionDataset`.
+
+       Parameters
+        ----------
+        dset_pth : Union[Path, str]
+            Path to CVAT dataset directory.
+        transforms : Callable, optional
+            Transforms that performs on sample.
+            Required that it has `albumentations.Compose` like structure.
+            By default is `None`.
+        class_to_index : Dict[str, int], optional
+            User-defined class to index mapping. It required that this dict
+            contains all classes represented in the dataset.
+            By default is `None`.
+        polarization : bool, optional
+            Is this a polarization dataset or RGB. By default is False (RGB).
+        """
         super().__init__(dset_pth, transforms, class_to_index)
         # Save polarization mode
         self.polarization = polarization
         # Create img to id maps (required by mosaic and YOLOv7 datasets)
         self.img_name_to_id = {
-            cvat_sample['name']: i
+            cvat_sample['img_pth'].name: i
             for i, cvat_sample in enumerate(self.samples)}
         self.img_id_to_name = {
             id: name
             for name, id, in self.img_name_to_id.items()}
 
     def get_sample(self, index: int) -> Dict[str, Any]:
-        """Get CVAT tank detection sample.
+        """Get sample.
 
         Sample represented as a dict that contains "image" `ndarray`,
         "bboxes" `list[list[float]]`, "classes" `list[int]`, "img_pth" `Path`
@@ -98,7 +106,7 @@ class PolarizationObjectDetectionDataset(CvatObjectDetectionDataset):
         """
         # Convert bboxes and classes from lists to arrays as required
         sample['bboxes'] = np.array(sample['bboxes'])
-        sample['classes'] = np.array(sample['classes'])
+        sample['classes'] = np.array(sample['labels'])
         image = sample['image']
         bboxes = sample['bboxes']
         classes = sample['classes']
