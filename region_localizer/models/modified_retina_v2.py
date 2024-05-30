@@ -14,7 +14,7 @@ from torchvision.models.detection.retinanet import (
 from torchvision.ops.feature_pyramid_network import (
     LastLevelP6P7, ExtraFPNBlock, LastLevelMaxPool)
 
-sys.path.append(str(Path(__file__).parents[1]))
+sys.path.append(str(Path(__file__).parents[2]))
 from region_localizer.models.modified_retina import create_default_anchorgen
 from utils.torch_utils.torch_functions import make_compatible_state_dict
 
@@ -255,10 +255,12 @@ if __name__ == '__main__':
     min_size = 1024
     max_size = 1024
     b = 2
-    device = torch.device('cuda')
+    device = torch.device('cpu')
 
     model = ModifiedRetinaV2.create_modified_retina(
-        min_size=min_size, max_size=max_size, pretrained=True, num_classes=2)
+        input_channels=6, num_classes=2, min_size=min_size, max_size=max_size,
+        pretrained=True, image_mean=[0.485, 0.456, 0.406] * 2,
+        image_std=[0.229, 0.224, 0.225] * 2)
     
     dummy_map = torch.rand((b, 6, max_size, max_size))
     dummy_map = list(torch.unbind(dummy_map))
