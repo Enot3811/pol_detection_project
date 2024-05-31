@@ -19,12 +19,12 @@ import xml.etree.ElementTree as ET
 
 import torch
 
-from .abstract_classification_dataset import AbstractClassificationDataset
+from .abstract_detection_dataset import AbstractDetectionDataset
 from ..torch_functions import FloatBbox, image_numpy_to_tensor
 from ...data_utils.data_functions import read_volume
 
 
-class CvatObjectDetectionDataset(AbstractClassificationDataset):
+class CvatObjectDetectionDataset(AbstractDetectionDataset):
     """CVAT compatible object detection dataset.
 
     Parameters

@@ -1,4 +1,4 @@
-"""Module contains abstract torch object detection dataset."""
+"""Module contains abstract torch classification dataset."""
 
 from abc import abstractmethod
 from pathlib import Path
@@ -77,6 +77,22 @@ class AbstractClassificationDataset(AbstractTorchDataset):
         index_to_class = {
             idx: label for label, idx in class_to_index.items()}
         return class_to_index, index_to_class
+    
+    @abstractmethod
+    def get_sample(self, index: Any) -> Dict[str, Any]:
+        """Get sample according to the dataset format.
+
+        Parameters
+        ----------
+        index : Any
+            Index of sample.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Sample in dict format.
+        """
+        return super().get_sample(index)
     
     def get_class_to_index(self) -> Dict[str, int]:
         """Get dataset's class to index mapping.
