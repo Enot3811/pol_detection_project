@@ -4,18 +4,17 @@
 from __future__ import annotations
 from xml.dom.minidom import Document
 import datetime
-from typing import Union
+from typing import Union, List
 from pathlib import Path
 
 from tqdm import tqdm
 
 from ..torch_utils.datasets.abstract_detection_dataset import (
     AbstractDetectionDataset)
-from .data_functions import read_volume
 
 
 def create_cvat_meta(
-    xml_doc: Document, dataset: AbstractDetectionDataset, subset_name: str
+    xml_doc: Document, set_size: int, labels_names: List[str], subset_name: str
 ) -> None:
     """Create "meta" tag of cvat annotations.
 
@@ -26,14 +25,14 @@ def create_cvat_meta(
     ----------
     xml_doc : Document
         An xml document for cvat annotations.
-    dataset : AbstractDetectionDataset
-        A detection dataset to annotate.
+    set_size : int
+        Length of the dataset to annotate.
+    labels_names : List[str]
+        Class names of the dataset ot annotate.
     set_name : str
         A name of the annotated set.
         For example "train", "val" or something else.
     """
-    set_size = len(dataset)
-    labels_names = list(dataset.get_class_to_index().keys())
     date = datetime.datetime.now(datetime.timezone(datetime.timedelta()))
     annotations = xml_doc.createElement('annotations')
     xml_doc.appendChild(annotations)
@@ -147,7 +146,9 @@ def create_cvat_detection_annotations(
     xml_doc : Document
         An xml document for cvat annotations.
     dataset : AbstractDetectionDataset
-        A detection dataset to annotate.
+        A detection dataset to annotate. This dataset is required to have
+        a `get_sample` method that return a dict containing "img_pth", "image",
+        "bboxes" and "labels".
     verbose : bool, optional
         Whether to show progress of converting. By default is `False`.
     """
@@ -157,7 +158,7 @@ def create_cvat_detection_annotations(
     for i in tqdm(range(len(dataset)), desc=desc):
         sample = dataset.get_sample(i)
         pth = sample['img_pth']
-        shape = read_volume(pth).shape[:2]  # read and shape
+        shape = sample['image'].shape[:2]  # read and shape
         bboxes = sample['bboxes']
         labels = sample['labels']
         image = xml_doc.createElement('image')
@@ -179,7 +180,7 @@ def create_cvat_detection_annotations(
         annots_tag.appendChild(image)
 
 
-def create_cvat_object_detection_xml(
+def create_cvat_annots_from_dataset(
     save_pth: Union[str, Path],
     dataset: AbstractDetectionDataset,
     set_name: str,
@@ -192,7 +193,9 @@ def create_cvat_object_detection_xml(
     save_pth : Union[str, Path]
         A path to save created xml file.
     dataset : AbstractDetectionDataset
-        A detection dataset to annotate.
+        A detection dataset to annotate. This dataset is required to have
+        a `get_sample` method that return a dict containing "img_pth", "image",
+        "bboxes" and "labels".
     set_name : str
         A name of saving set ("train", "val", etc).
     verbose : bool, optional
@@ -201,7 +204,12 @@ def create_cvat_object_detection_xml(
     if isinstance(save_pth, str):
         save_pth = Path(str)
     xml_doc = Document()
-    create_cvat_meta(xml_doc, dataset, set_name)
+    # Get len and classes names and create meta
+    set_size = len(dataset)
+    labels_names = list(dataset.get_class_to_index().keys())
+    create_cvat_meta(xml_doc, set_size, labels_names, set_name)
+
+    # Iterate over dataset to create annotations
     create_cvat_detection_annotations(xml_doc, dataset, verbose)
     
     save_pth.parent.mkdir(parents=True, exist_ok=True)
