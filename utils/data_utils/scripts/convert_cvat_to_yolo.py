@@ -73,14 +73,13 @@ from pathlib import Path
 import sys
 import shutil
 import yaml
-from collections import OrderedDict
 
 from tqdm import tqdm
 import torch
 from torchvision.ops import box_convert
 
 sys.path.append(str(Path(__file__).parents[3]))
-from utils.cvat_utils.cvat_datasets import CvatObjectDetectionDataset
+from utils.torch_utils.datasets import CvatDetectionDataset
 
 
 def main(cvat_contain_dir: Path, save_dir: Path, copy_images: bool = False):
@@ -88,6 +87,7 @@ def main(cvat_contain_dir: Path, save_dir: Path, copy_images: bool = False):
         input(f'Given save_dir "{str(save_dir)}" already exists. '
               'All data will be deleted if continue. Press enter to continue.')
         shutil.rmtree(save_dir)
+    save_dir.mkdir()
 
     train_dset = cvat_contain_dir / 'train'
     val_dset = cvat_contain_dir / 'val'
@@ -111,15 +111,15 @@ def main(cvat_contain_dir: Path, save_dir: Path, copy_images: bool = False):
             images_dir = save_dset_pth / 'images'
             images_dir.mkdir(parents=True, exist_ok=True)
 
-        dset = CvatObjectDetectionDataset(orig_dset_pth)
+        dset = CvatDetectionDataset(orig_dset_pth)
         if i == 0:
-            cls_to_id = OrderedDict(
-                zip(dset.get_labels(), range(len(dset.get_labels()))))
+            cls_to_id = dset.get_class_to_index()
 
         # Create txt for every sample and copy image if needed
+        samples = dset.get_samples_annotations()
         desc = f'Convert {orig_dset_pth.name} set'
-        for sample in tqdm(dset, desc=desc):
-            txt_pth = labels_dir / (sample['name'].split('.')[0] + '.txt')
+        for sample in tqdm(samples, desc=desc):
+            txt_pth = labels_dir / sample['img_pth'].with_suffix('.txt').name
             # If there are some objects
             if len(sample['labels']) > 0:
                 # Read classes of sample
@@ -148,8 +148,8 @@ def main(cvat_contain_dir: Path, save_dir: Path, copy_images: bool = False):
                     pass
 
             if copy_images:
-                orig_img_pth = orig_dset_pth / 'images' / sample['name']
-                dst_img_pth = images_dir / sample['name']
+                orig_img_pth = sample['img_pth']
+                dst_img_pth = images_dir / sample['img_pth'].name
                 shutil.copy2(orig_img_pth, dst_img_pth)
 
     # Create yaml
@@ -187,8 +187,8 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
 
     if not args.cvat_contain_dir.exists():
-        raise FileNotFoundError('cvat_contain_dir does not exist.')
-
+        raise FileNotFoundError(
+            f'Given "{str(args.cvat_contain_dir)}" dir does not exist.')
     return args
 
 
