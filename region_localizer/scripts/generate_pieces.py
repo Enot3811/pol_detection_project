@@ -81,7 +81,7 @@ def main(
     result_dir = image_dir.parent / 'pieces'
     if result_dir.exists():
         input(f'Output directory "{result_dir}" already exists. '
-              'Сontinuing to work will delete the data located there. '
+              'If continue, this directory will be deleted. '
               'Press enter to continue.')
         shutil.rmtree(result_dir)
 

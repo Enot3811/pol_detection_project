@@ -62,7 +62,7 @@ def main(config_pth: Path):
     if not config['continue_training']:
         if work_dir.exists():
             input(f'Specified directory "{str(work_dir)}" already exists. '
-                  'Сontinuing to work will delete the data located there. '
+                  'If continue, this directory will be deleted. '
                   'Press enter to continue.')
             shutil.rmtree(work_dir)
         tensorboard_dir.mkdir(parents=True, exist_ok=True)

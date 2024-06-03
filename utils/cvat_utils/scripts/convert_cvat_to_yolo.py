@@ -85,8 +85,8 @@ from utils.cvat_utils.cvat_datasets import CvatObjectDetectionDataset
 
 def main(cvat_contain_dir: Path, save_dir: Path, copy_images: bool = False):
     if save_dir.exists():
-        input('Given save_dir already exists. '
-              'All data will be delete if continue. Press enter to continue.')
+        input(f'Given save_dir "{str(save_dir)}" already exists. '
+              'All data will be deleted if continue. Press enter to continue.')
         shutil.rmtree(save_dir)
 
     train_dset = cvat_contain_dir / 'train'
