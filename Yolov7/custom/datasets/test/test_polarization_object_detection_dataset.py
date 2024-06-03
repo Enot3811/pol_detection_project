@@ -23,7 +23,7 @@ from utils.torch_utils.torch_functions import (
 
 
 def main(
-    dset_dir: Path, input_size: int, polarization: bool, random_crop: bool,
+    dset_pth: Path, input_size: int, polarization: bool, random_crop: bool,
     horizontal_flip: bool, mosaic_prob: float, mixup_prob: float
 ):
     # Polarization difference
@@ -56,7 +56,7 @@ def main(
 
     # Get datasets and loaders
     dset = PolarizationObjectDetectionDataset(
-        dset_dir, polarization=polarization)
+        dset_pth, polarization=polarization)
 
     mosaic_mixup_dset = MosaicMixupDataset(
         dset,
@@ -112,13 +112,13 @@ def main(
 
 if __name__ == "__main__":
     # Configs
-    dset_dir = Path('data/tank/train_tank_rgb/train')
+    dset_pth = Path('data/tank/train_tank_rgb/train')
     input_size = 640
     polarization = False
     random_crop = True
     horizontal_flip = False
     mosaic_prob = 0.0
     mixup_prob = 0.0
-    main(dset_dir=dset_dir, input_size=input_size, polarization=polarization,
+    main(dset_pth=dset_pth, input_size=input_size, polarization=polarization,
          random_crop=random_crop, mosaic_prob=mosaic_prob,
          mixup_prob=mixup_prob, horizontal_flip=horizontal_flip)

@@ -24,7 +24,7 @@ from utils.torch_utils.torch_functions import (
 
 
 def main(
-    dset_dir: Path, input_size: int, random_crop: bool, horizontal_flip: bool,
+    dset_pth: Path, input_size: int, random_crop: bool, horizontal_flip: bool,
     mosaic_prob: float, mixup_prob: float, active_ch: str
 ):
     pad_colour = (114,) * 2
@@ -52,7 +52,7 @@ def main(
 
     # Get dataset
     dset = PolarizationObjectDetectionDataset2ch(
-        dset_dir, active_ch=active_ch)
+        dset_pth, active_ch=active_ch)
 
     mosaic_mixup_dset = MosaicMixupDataset(
         dset,
@@ -120,13 +120,13 @@ def main(
 
 if __name__ == "__main__":
     # Configs
-    dset_dir = Path('data/tank/train_tank_pol/train')
+    dset_pth = Path('data/tank/train_tank_pol/train')
     input_size = 640
     random_crop = True
     horizontal_flip = False
     mosaic_prob = 0.5
     mixup_prob = 0.0
     active_ch = '0_90'
-    main(dset_dir=dset_dir, input_size=input_size, random_crop=random_crop,
+    main(dset_pth=dset_pth, input_size=input_size, random_crop=random_crop,
          mosaic_prob=mosaic_prob, mixup_prob=mixup_prob,
          horizontal_flip=horizontal_flip, active_ch=active_ch)
