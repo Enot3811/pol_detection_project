@@ -158,7 +158,7 @@ class CvatDetectionDataset(AbstractDetectionDataset):
         Dict[str, Any]
             CVAT object detection sample by index.
         """
-        sample_annots = self.samples[index]
+        sample_annots = self._samples[index]
         img_pth = sample_annots['img_pth']
         labels = sample_annots['labels']
         bboxes = sample_annots['bboxes']

@@ -29,7 +29,7 @@ class AbstractClassificationDataset(AbstractTorchDataset):
     ) -> None:
         super().__init__(dset_pth, transforms)
         self._class_to_index, self._index_to_class = (
-            self._collect_class_labels(self.samples, class_to_index))
+            self._collect_class_labels(self._samples, class_to_index))
 
     @abstractmethod
     def _collect_class_labels(

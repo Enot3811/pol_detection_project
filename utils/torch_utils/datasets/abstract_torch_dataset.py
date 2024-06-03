@@ -25,7 +25,7 @@ class AbstractTorchDataset(ABC, Dataset):
     ) -> None:
         super().__init__()
         self.dset_pth = self._parse_dataset_pth(dset_pth)
-        self.samples = self._collect_samples(self.dset_pth)
+        self._samples = self._collect_samples(self.dset_pth)
         self.transforms = transforms
 
     @abstractmethod
@@ -81,7 +81,7 @@ class AbstractTorchDataset(ABC, Dataset):
         Any
             Prepared sample.
         """
-        return self.samples[index]
+        return self._samples[index]
 
     @abstractmethod
     def postprocess_sample(self, sample: Any) -> Any:
@@ -143,7 +143,7 @@ class AbstractTorchDataset(ABC, Dataset):
         int
             length of the dataset.
         """
-        return len(self.samples)
+        return len(self._samples)
     
     def __getitem__(self, index: Any) -> Any:
         sample = self.get_sample(index)
