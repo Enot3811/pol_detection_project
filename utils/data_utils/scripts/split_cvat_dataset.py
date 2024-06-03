@@ -48,7 +48,7 @@ def main(
         subset_images_dir.mkdir(parents=True)
 
         # Replace samples of dataset instance to put into xml creator
-        dset._samples = samples
+        dset._samples = subset_samples
 
         # Create CVAT xml
         create_cvat_xml_from_dataset(
