@@ -39,10 +39,10 @@ def handle_frame(
 
     key = None
     if showing:
-        cv2.imshow('Pseudo rgb (1, 2, 3)', resize_image(split_channels[..., :3], win_size))
-        cv2.imshow('Pseudo rgb (2, 3, 4)', resize_image(split_channels[..., 1:], win_size))
-        cv2.imshow('Pseudo rgb (1, 3, 4)', resize_image(split_channels[..., [0, 2, 3]], win_size))
-        cv2.imshow('Pseudo rgb (1, 2, 4)', resize_image(split_channels[..., [0, 1, 3]], win_size))
+        # cv2.imshow('Pseudo rgb (1, 2, 3)', resize_image(split_channels[..., :3], win_size))
+        # cv2.imshow('Pseudo rgb (2, 3, 4)', resize_image(split_channels[..., 1:], win_size))
+        # cv2.imshow('Pseudo rgb (1, 3, 4)', resize_image(split_channels[..., [0, 2, 3]], win_size))
+        # cv2.imshow('Pseudo rgb (1, 2, 4)', resize_image(split_channels[..., [0, 1, 3]], win_size))
         cv2.imshow('Pseudo rgb', resize_image(pseudo_rgb, win_size))
         # cv2.imshow('Channel 0', resize_image(split_channels[..., 0], win_size))
         # cv2.imshow('Channel 45', resize_image(split_channels[..., 1], win_size))
