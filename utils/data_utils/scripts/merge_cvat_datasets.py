@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).parents[3]))
 from utils.torch_utils.datasets import CvatDetectionDataset
-from utils.data_utils.cvat_functions import create_cvat_annots_from_dataset
+from utils.data_utils.cvat_functions import create_cvat_xml_from_dataset
 
 
 def main(datasets_paths: List[Path], save_dir: Path, verbose: bool):
@@ -57,7 +57,7 @@ def main(datasets_paths: List[Path], save_dir: Path, verbose: bool):
     dset._class_to_index = {
         cls_name: i for i, cls_name in enumerate(union_cls_names)}
     # And then put it to xml creator function
-    create_cvat_annots_from_dataset(union_annots_pth, dset, 'merged', verbose)
+    create_cvat_xml_from_dataset(union_annots_pth, dset, 'merged', verbose)
 
 
 def parse_args() -> argparse.Namespace:

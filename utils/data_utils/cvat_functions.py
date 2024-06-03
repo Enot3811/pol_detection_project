@@ -180,7 +180,7 @@ def create_cvat_detection_annotations(
         annots_tag.appendChild(image)
 
 
-def create_cvat_annots_from_dataset(
+def create_cvat_xml_from_dataset(
     save_pth: Union[str, Path],
     dataset: AbstractDetectionDataset,
     set_name: str,
