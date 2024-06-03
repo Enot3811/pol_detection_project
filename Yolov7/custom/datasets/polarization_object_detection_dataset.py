@@ -12,11 +12,11 @@ from typing import Dict, Union, Callable, Any, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from utils.torch_utils.datasets import CvatObjectDetectionDataset
+from utils.torch_utils.datasets import CvatDetectionDataset
 from mako_camera.cameras_utils import split_raw_pol
 
 
-class PolarizationObjectDetectionDataset(CvatObjectDetectionDataset):
+class PolarizationObjectDetectionDataset(CvatDetectionDataset):
     """Polarization object detection dataset in CVAT format for yolo project.
 
     Sample format of this dataset is compatible to use in `MosaicMixupDataset`.
@@ -54,7 +54,7 @@ class PolarizationObjectDetectionDataset(CvatObjectDetectionDataset):
         # Create img to id maps (required by mosaic and YOLOv7 datasets)
         self.img_name_to_id = {
             cvat_sample['img_pth'].name: i
-            for i, cvat_sample in enumerate(self.samples)}
+            for i, cvat_sample in enumerate(self.get_samples_annotations())}
         self.img_id_to_name = {
             id: name
             for name, id, in self.img_name_to_id.items()}

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, Sequence, Any, List, Callable, Optional
+from typing import Union, Sequence, Any, List, Callable, Optional, Collection
 from pathlib import Path
 
 import torch
@@ -82,6 +82,16 @@ class AbstractTorchDataset(ABC, Dataset):
             Prepared sample.
         """
         return self._samples[index]
+    
+    def get_samples_annotations(self) -> Collection:
+        """Get dataset's samples annotations.
+
+        Returns
+        -------
+        Collection
+            Samples annotations collection.
+        """
+        return self._samples
 
     @abstractmethod
     def postprocess_sample(self, sample: Any) -> Any:
