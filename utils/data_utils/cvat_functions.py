@@ -146,19 +146,19 @@ def create_cvat_detection_annotations(
     xml_doc : Document
         An xml document for cvat annotations.
     dataset : AbstractDetectionDataset
-        A detection dataset to annotate. This dataset is required to have
-        a `get_sample` method that return a dict containing "img_pth", "image",
-        "bboxes" and "labels".
+        A detection dataset to annotate. This dataset's samples are required
+        to be a dict containing "img_pth", "shape", "bboxes" and "labels".
     verbose : bool, optional
         Whether to show progress of converting. By default is `False`.
     """
-    desc = 'Forming cvat images annotations' if verbose else None
     annots_tag = xml_doc.getElementsByTagName("annotations")[0]
-    idx_to_cls = dataset.get_index_to_class()
-    for i in tqdm(range(len(dataset)), desc=desc):
-        sample = dataset.get_sample(i)
+    iterator = range(len(dataset))
+    if verbose:
+        iterator = tqdm(iterator, 'Form cvat images annotations')
+    for i in iterator:
+        sample = dataset._samples[i]
         pth = sample['img_pth']
-        shape = sample['image'].shape[:2]  # read and shape
+        shape = sample['shape']
         bboxes = sample['bboxes']
         labels = sample['labels']
         image = xml_doc.createElement('image')
@@ -168,7 +168,7 @@ def create_cvat_detection_annotations(
         image.setAttribute('height', str(shape[0]))
         for bbox, label in zip(bboxes, labels):
             box = xml_doc.createElement('box')
-            box.setAttribute('label', idx_to_cls[label])
+            box.setAttribute('label', label)
             box.setAttribute('occluded', '0')
             box.setAttribute('source', 'manual')
             box.setAttribute('xtl', str(bbox[0]))
@@ -193,9 +193,8 @@ def create_cvat_annots_from_dataset(
     save_pth : Union[str, Path]
         A path to save created xml file.
     dataset : AbstractDetectionDataset
-        A detection dataset to annotate. This dataset is required to have
-        a `get_sample` method that return a dict containing "img_pth", "image",
-        "bboxes" and "labels".
+        A detection dataset to annotate. This dataset's samples are required
+        to be a dict containing "img_pth", "shape", "bboxes" and "labels".
     set_name : str
         A name of saving set ("train", "val", etc).
     verbose : bool, optional
