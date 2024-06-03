@@ -1,4 +1,4 @@
-"""Скрипт для обучения yolov7."""
+"""Train yolov7 with polarization dataset."""
 
 
 import sys
@@ -6,7 +6,6 @@ from pathlib import Path
 import shutil
 import json
 import argparse
-from math import ceil
 
 import torch
 import torch.optim as optim
@@ -27,7 +26,7 @@ from Yolov7.yolov7.mosaic import (
     MosaicMixupDataset, create_post_mosaic_transform)
 from Yolov7.yolov7.trainer import filter_eval_predictions
 from Yolov7.custom.datasets import (
-    TankDetectionDataset, TankDetectionDatasetAdditional)
+    PolarizationObjectDetectionDataset, PolarizationObjectDetectionDataset2ch)
 from Yolov7.custom.model_utils import create_yolo
 
 
@@ -65,23 +64,19 @@ def main(**kwargs):
             else torch.device('cpu'))
     else:
         device: torch.device = torch.device(config['device'])
-    cpu_device = torch.device('cpu')
-    
+
     work_dir = Path(config['work_dir'])
     tensorboard_dir = work_dir / 'tensorboard'
     ckpt_dir = work_dir / 'ckpts'
     if not config['continue_training']:
         if work_dir.exists():
-            input('Specified directory already exists. '
+            input(f'Specified directory "{str(work_dir)}" already exists. '
                   'If continue, this directory will be deleted. '
                   'Press enter to continue.')
             shutil.rmtree(work_dir)
         tensorboard_dir.mkdir(parents=True, exist_ok=True)
         ckpt_dir.mkdir(parents=True, exist_ok=True)
 
-    n_accumulate_steps = ceil(
-        config['nominal_batch_size'] / config['batch_size'])
-    
     if config['polarization']:
         if 'active_ch' in config:
             num_channels = 2
@@ -109,11 +104,11 @@ def main(**kwargs):
 
     # Get tensorboard
     log_writer = SummaryWriter(str(tensorboard_dir))
-    
+
     # Get transforms
     post_mosaic_transforms = create_post_mosaic_transform(
         config['input_size'], config['input_size'], pad_colour=pad_colour)
-    
+
     if config['random_crop']:
         training_transforms = [
             A.RandomCropFromBorders(crop_left=0.4, crop_right=0.4,
@@ -130,23 +125,20 @@ def main(**kwargs):
         pad_colour=pad_colour)
 
     # Get datasets and loaders
-    train_dir = Path(config['dataset']) / 'train'
-    val_dir = Path(config['dataset']) / 'val'
-
     if active_ch is None:
-        train_dset = TankDetectionDataset(
-            train_dir, name2index=config['cls_to_id'],
+        train_dset = PolarizationObjectDetectionDataset(
+            config['train_dset'], class_to_index=config['cls_to_id'],
             polarization=config['polarization'])
-        val_dset = TankDetectionDataset(
-            val_dir, name2index=config['cls_to_id'],
+        val_dset = PolarizationObjectDetectionDataset(
+            config['val_dset'], class_to_index=config['cls_to_id'],
             polarization=config['polarization'])
     else:
-        train_dset = TankDetectionDatasetAdditional(
-            train_dir, name2index=config['cls_to_id'],
+        train_dset = PolarizationObjectDetectionDataset2ch(
+            config['train_dset'], class_to_index=config['cls_to_id'],
             polarization=config['polarization'],
             active_ch=active_ch)
-        val_dset = TankDetectionDatasetAdditional(
-            val_dir, name2index=config['cls_to_id'],
+        val_dset = PolarizationObjectDetectionDataset2ch(
+            config['val_dset'], class_to_index=config['cls_to_id'],
             polarization=config['polarization'],
             active_ch=active_ch)
     num_classes = len(config['cls_to_id'])
@@ -157,21 +149,19 @@ def main(**kwargs):
         apply_mixup_probability=config['mixup_prob'],
         pad_colour=pad_colour,
         post_mosaic_transforms=post_mosaic_transforms)
-    
-    # if config['pretrained']:
-    #     # disable mosaic if finetuning
-    #     mosaic_mixup_dset.disable()
-    
+
     train_yolo_dset = Yolov7Dataset(mosaic_mixup_dset, yolo_train_transforms)
     val_yolo_dset = Yolov7Dataset(val_dset, yolo_val_transforms)
 
     train_loader = DataLoader(train_yolo_dset,
                               batch_size=config['batch_size'],
                               shuffle=config['shuffle_train'],
+                              num_workers=config['num_workers'],
                               collate_fn=yolov7_collate_fn)
     val_loader = DataLoader(val_yolo_dset,
                             batch_size=config['batch_size'],
                             shuffle=config['shuffle_val'],
+                            num_workers=config['num_workers'],
                             collate_fn=yolov7_collate_fn)
 
     # Get the model and loss
@@ -187,18 +177,29 @@ def main(**kwargs):
     loss_func.to(device=device)
 
     # Get the optimizer
-    param_groups = model.get_parameter_groups()
-    optimizer = optim.SGD(param_groups['other_params'],
-                          lr=config['lr'],
-                          momentum=0.937,
-                          nesterov=True)
-    optimizer.add_param_group({'params': param_groups['conv_weights'],
-                               'weight_decay': config['weight_decay']})
-    # optimizer = optim.Adam(model.parameters(),
-    #                        lr=config['lr'],
-    #                        weight_decay=config['weight_decay'])
+    if config['optimizer'] == 'SGD':
+        optimizer = optim.SGD(model.parameters(),
+                              lr=config['lr'],
+                              momentum=0.937,
+                              nesterov=True)
+    elif config['optimizer'] == 'SGD_groups':
+        param_groups = model.get_parameter_groups()
+        optimizer = optim.SGD(param_groups['other_params'],
+                              lr=config['lr'],
+                              momentum=0.937,
+                              nesterov=True)
+        optimizer.add_param_group({'params': param_groups['conv_weights'],
+                                   'weight_decay': config['weight_decay']})
+    elif config['optimizer'] == 'Adam':
+        optimizer = optim.Adam(model.parameters(),
+                               lr=config['lr'],
+                               weight_decay=config['weight_decay'])
+    else:
+        raise ValueError(
+            f'Got unsupported optimizer type {str(config["optimizer"])}')
     if optim_params:
         optimizer.load_state_dict(optim_params)
+    optimizer.state_dict()
 
     # Get the scheduler
     lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
@@ -206,14 +207,17 @@ def main(**kwargs):
         last_epoch=start_ep - 1)
     if lr_params:
         lr_scheduler.load_state_dict(lr_params)
-    
+
     # Get metrics
-    val_map_metric = MeanAveragePrecision(
-        iou_thresholds=[config['iou_thresh']])
+    train_map_metric = MeanAveragePrecision(
+        iou_thresholds=[config['iou_thresh']], compute_on_cpu=True)
     train_loss_metric = YoloLossMetric()
+    val_map_metric = MeanAveragePrecision(
+        iou_thresholds=[config['iou_thresh']], compute_on_cpu=True)
     val_loss_metric = YoloLossMetric()
-    val_map_metric.to(device=device)
     train_loss_metric.to(device=device)
+    train_map_metric.to(device=device)
+    val_map_metric.to(device=device)
     val_loss_metric.to(device=device)
 
     # Do training
@@ -234,19 +238,47 @@ def main(**kwargs):
             loss, _ = loss_func(
                 fpn_heads_outputs=fpn_heads_outputs,
                 targets=labels, images=images)
-            loss = loss[0] / n_accumulate_steps
+            loss = loss[0] / config['accumulate_steps']
             loss.backward()
-            
-            perform_gradient_update = (
-                (step + 1) % n_accumulate_steps == 0
-            ) or (step + 1 == len(train_loader))
-            if perform_gradient_update:
+
+            # Whether to update weights
+            if ((step + 1) % config['accumulate_steps'] == 0 or
+                    (step + 1 == len(train_loader))):
                 # TODO при продолжении обучения ломается на step из-за
                 # размерностей
                 optimizer.step()
                 optimizer.zero_grad()
-            
+
             train_loss_metric.update(loss)
+
+            # Translate predicts to mAP compatible format
+            preds = model.postprocess(
+                fpn_heads_outputs, multiple_labels_per_box=False)
+
+            nms_predictions = filter_eval_predictions(
+                preds,
+                confidence_threshold=config['conf_thresh'],
+                nms_threshold=config['iou_thresh'])
+
+            map_preds = [
+                {'boxes': image_preds[:, :4],
+                 'labels': image_preds[:, -1].long(),
+                 'scores': image_preds[:, -2]}
+                for image_preds in nms_predictions]
+
+            map_targets = []
+            for i in range(images.shape[0]):
+                img_labels = labels[labels[:, 0] == i]
+                img_boxes = img_labels[:, 2:] * images.shape[2]
+                img_boxes = box_convert(img_boxes, 'cxcywh', 'xyxy')
+                img_classes = img_labels[:, 1].long()
+                map_targets.append({
+                    'boxes': img_boxes,
+                    'labels': img_classes
+                })
+
+            train_map_metric.update(map_preds, map_targets)
+
             step += 1
         
         # Val epoch
@@ -264,6 +296,7 @@ def main(**kwargs):
                 loss = loss[0]
                 val_loss_metric.update(loss)
                 
+                # Translate predicts to mAP compatible format
                 preds = model.postprocess(
                     fpn_heads_outputs, multiple_labels_per_box=False)
 
@@ -297,35 +330,40 @@ def main(**kwargs):
 
         # Log epoch metrics
         train_loss = train_loss_metric.compute()
-        train_loss_metric.reset()
-        log_writer.add_scalar('loss/train', train_loss, epoch)
         val_loss = val_loss_metric.compute()
+        train_loss_metric.reset()
         val_loss_metric.reset()
-        log_writer.add_scalar('loss/val', val_loss, epoch)
+        log_writer.add_scalars('loss', {
+            'train': train_loss,
+            'val': val_loss
+        }, epoch)
 
+        train_map_dict = train_map_metric.compute()
         val_map_dict = val_map_metric.compute()
+        train_map_metric.reset()
         val_map_metric.reset()
-        log_writer.add_scalar(
-            'map/val',
-            val_map_dict['map'].to(device=cpu_device),
-            epoch)
-        log_writer.add_scalar(
-            'map_small/val',
-            val_map_dict['map_small'].to(device=cpu_device),
-            epoch)
-        log_writer.add_scalar(
-            'map_medium/val',
-            val_map_dict['map_medium'].to(device=cpu_device),
-            epoch)
-        log_writer.add_scalar(
-            'map_large/val',
-            val_map_dict['map_large'].to(device=cpu_device),
-            epoch)
+        log_writer.add_scalars('map', {
+            'train': train_map_dict['map'],
+            'val': val_map_dict['map']
+        }, epoch)
+        log_writer.add_scalars('map_small', {
+            'train': train_map_dict['map_small'],
+            'val': val_map_dict['map_small']
+        }, epoch)
+        log_writer.add_scalars('map_medium', {
+            'train': train_map_dict['map_medium'],
+            'val': val_map_dict['map_medium']
+        }, epoch)
+        log_writer.add_scalars('map_large', {
+            'train': train_map_dict['map_large'],
+            'val': val_map_dict['map_large']
+        }, epoch)
 
         log_writer.add_scalar('Lr', lr, epoch)
 
         print('TrainLoss:', train_loss.item())
         print('ValLoss:', val_loss.item())
+        print('TrainMap:', train_map_dict['map'].item())
         print('ValMap:', val_map_dict['map'].item())
         print('Lr:', lr)
 
@@ -354,11 +392,12 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         'config_pth', type=Path,
-        help='Путь к конфигу обучения.')
+        help='Path to train config.')
     args = parser.parse_args()
 
     if not args.config_pth.exists():
-        raise FileNotFoundError('Specified config file does not exists.')
+        raise FileNotFoundError(
+            f'Config file "{str(args.config_pth)}" is not found.')
     return args
 
 
