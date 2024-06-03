@@ -239,5 +239,5 @@ class CvatDetectionDataset(AbstractDetectionDataset):
     @staticmethod
     def collate_func(batch: List[Dict[str, Any]]) -> Any:
         # TODO check and implement
-        print()
+        raise NotImplementedError()
         return batch
