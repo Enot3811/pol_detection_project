@@ -226,6 +226,7 @@ def main(config_pth: Path):
 
         # Train epoch
         model.train()
+        step = 1
         for batch in tqdm(train_loader, 'Train step'):
             # TODO сделать отдельный преобразователь для батчей
             images = []
@@ -242,9 +243,13 @@ def main(config_pth: Path):
                 losses, predicts = model(*batch)
                 loss = losses['classification'] + losses['bbox_regression']
             amp_scaler.scale(loss).backward()
-            amp_scaler.step(optimizer)
-            amp_scaler.update()
-            optimizer.zero_grad()
+
+            if (step % config['steps_to_update'] == 0 or
+                    step == len(train_loader)):
+                amp_scaler.step(optimizer)
+                amp_scaler.update()
+                optimizer.zero_grad()
+            step += 1
 
             targets = batch[-1]
             # Collect only most confident bbox
