@@ -4,17 +4,18 @@
 from __future__ import annotations
 from xml.dom.minidom import Document
 import datetime
-from typing import List, Union, TYPE_CHECKING
+from typing import Union
 from pathlib import Path
 
 from tqdm import tqdm
 
-if TYPE_CHECKING:
-    from utils.data_utils.datasets import BaseObjectDetectionSample
+from ..torch_utils.datasets.abstract_detection_dataset import (
+    AbstractDetectionDataset)
+from .data_functions import read_volume
 
 
 def create_cvat_meta(
-    xml_doc: Document, set_size: int, labels_names: List[str], subset_name: str
+    xml_doc: Document, dataset: AbstractDetectionDataset, subset_name: str
 ) -> None:
     """Create "meta" tag of cvat annotations.
 
@@ -25,14 +26,14 @@ def create_cvat_meta(
     ----------
     xml_doc : Document
         An xml document for cvat annotations.
-    set_size : int
-        Number of images in the annotated set.
-    labels_names : List[str]
-        Labels names of annotated objects.
+    dataset : AbstractDetectionDataset
+        A detection dataset to annotate.
     set_name : str
         A name of the annotated set.
         For example "train", "val" or something else.
     """
+    set_size = len(dataset)
+    labels_names = list(dataset.get_class_to_index().keys())
     date = datetime.datetime.now(datetime.timezone(datetime.timedelta()))
     annotations = xml_doc.createElement('annotations')
     xml_doc.appendChild(annotations)
@@ -131,47 +132,48 @@ def create_cvat_meta(
     meta.appendChild(dumped)
 
 
-def create_cvat_object_detection_annotations(
+def create_cvat_detection_annotations(
     xml_doc: Document,
-    set_samples: List[BaseObjectDetectionSample],
+    dataset: AbstractDetectionDataset,
     verbose: bool = False
 ) -> None:
     """Create CVAT object detection annotations.
 
-    Take a list of samples and write images' annotations in CVAT format
+    Take a detection dataset and write images' annotations in CVAT format
     to the given xml document.
 
     Parameters
     ----------
     xml_doc : Document
         An xml document for cvat annotations.
-    set_samples : List[BaseSample]
-        A set of samples.
+    dataset : AbstractDetectionDataset
+        A detection dataset to annotate.
     verbose : bool, optional
         Whether to show progress of converting. By default is `False`.
     """
-    iterator = list(enumerate(set_samples))
-    if verbose:
-        iterator = tqdm(iterator, desc='Forming cvat images annotations')
+    desc = 'Forming cvat images annotations' if verbose else None
     annots_tag = xml_doc.getElementsByTagName("annotations")[0]
-    for i, sample in iterator:
-        pth = sample.get_image_path()
-        shape = sample.get_image().shape[:2]
-        annots = sample.get_annotations()
+    idx_to_cls = dataset.get_index_to_class()
+    for i in tqdm(range(len(dataset)), desc=desc):
+        sample = dataset.get_sample(i)
+        pth = sample['img_pth']
+        shape = read_volume(pth).shape[:2]  # read and shape
+        bboxes = sample['bboxes']
+        labels = sample['labels']
         image = xml_doc.createElement('image')
         image.setAttribute('id', str(i))
         image.setAttribute('name', pth.name)
         image.setAttribute('width', str(shape[1]))
         image.setAttribute('height', str(shape[0]))
-        for annot in annots:
+        for bbox, label in zip(bboxes, labels):
             box = xml_doc.createElement('box')
-            box.setAttribute('label', annot.label)
+            box.setAttribute('label', idx_to_cls[label])
             box.setAttribute('occluded', '0')
             box.setAttribute('source', 'manual')
-            box.setAttribute('xtl', str(annot.x1))
-            box.setAttribute('ytl', str(annot.y1))
-            box.setAttribute('xbr', str(annot.x2))
-            box.setAttribute('ybr', str(annot.y2))
+            box.setAttribute('xtl', str(bbox[0]))
+            box.setAttribute('ytl', str(bbox[1]))
+            box.setAttribute('xbr', str(bbox[2]))
+            box.setAttribute('ybr', str(bbox[3]))
             box.setAttribute('z_order', '0')
             image.appendChild(box)
         annots_tag.appendChild(image)
@@ -179,31 +181,28 @@ def create_cvat_object_detection_annotations(
 
 def create_cvat_object_detection_xml(
     save_pth: Union[str, Path],
-    set_samples: List[BaseObjectDetectionSample],
+    dataset: AbstractDetectionDataset,
     set_name: str,
-    set_labels: List[str],
     verbose: bool = False
 ):
     """Save annotations as a CVAT xml document.
 
     Parameters
     ----------
-    xml_doc : Document
-        The xml document object.
     save_pth : Union[str, Path]
-        An xml save path.
+        A path to save created xml file.
+    dataset : AbstractDetectionDataset
+        A detection dataset to annotate.
     set_name : str
         A name of saving set ("train", "val", etc).
-    set_labels : List[str]
-        a list of all set's labels.
     verbose : bool, optional
         Whether to show progress of converting. By default is `False`.
     """
     if isinstance(save_pth, str):
         save_pth = Path(str)
     xml_doc = Document()
-    create_cvat_meta(xml_doc, len(set_samples), set_labels, set_name)
-    create_cvat_object_detection_annotations(xml_doc, set_samples, verbose)
+    create_cvat_meta(xml_doc, dataset, set_name)
+    create_cvat_detection_annotations(xml_doc, dataset, verbose)
     
     save_pth.parent.mkdir(parents=True, exist_ok=True)
     xml_doc.writexml(open(save_pth, 'w'), indent="  ", addindent="  ",
