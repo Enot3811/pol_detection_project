@@ -37,7 +37,7 @@ class RegionDatasetV2Rnd(RegionDatasetV2Dif):
             - "bboxes" - `list of FloatBbox`.
         """
         pths = collect_paths(
-            self.samples[index], file_extensions=IMAGE_EXTENSIONS)
+            self._samples[index], file_extensions=IMAGE_EXTENSIONS)
         
         map_pth = pths[torch.randint(0, len(pths), ())]
         crop_pth = pths[torch.randint(0, len(pths), ())]

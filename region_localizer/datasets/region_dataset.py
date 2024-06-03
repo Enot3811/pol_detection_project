@@ -105,7 +105,7 @@ class RegionDataset(AbstractTorchDataset):
             `(*result_size, 3)`
             - "bboxes" - `list of FloatBbox`.
         """
-        map_img = read_image(self.samples[index])
+        map_img = read_image(self._samples[index])
         bboxes = []
         pieces_imgs = []
         for _ in range(self.num_crops):
