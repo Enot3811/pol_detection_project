@@ -123,8 +123,8 @@ class Yolov7Dataset(Dataset):
 
         try:
             if len(image_id) > 0:
-                # Пусть вернёт хоть какой-то id
-                image_id_tensor = torch.as_tensor([image_id[0]])
+                # Changed: Пусть вернёт хоть какой-то id
+                image_id_tensor = torch.as_tensor(image_id[0])
 
         except TypeError:
             image_id_tensor = torch.as_tensor(image_id)
