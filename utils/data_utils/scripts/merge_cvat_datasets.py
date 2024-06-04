@@ -52,12 +52,10 @@ def main(datasets_paths: List[Path], save_dir: Path, verbose: bool):
             samples[i]['img_pth'] = new_pth
         union_dset_samples += samples
 
-    # Get last dataset instance and just replace samples and class labels
-    dset._samples = union_dset_samples
-    dset._class_to_index = {
-        cls_name: i for i, cls_name in enumerate(union_cls_names)}
     # And then put it to xml creator function
-    create_cvat_xml_from_dataset(union_annots_pth, dset, 'merged', verbose)
+    create_cvat_xml_from_dataset(
+        union_annots_pth, list(union_cls_names), union_dset_samples, 'merged',
+        verbose)
 
 
 def parse_args() -> argparse.Namespace:

@@ -27,9 +27,10 @@ def main(
         shutil.rmtree(save_dir)
     save_dir.mkdir()
 
-    # Get samples
+    # Get samples and classes
     dset = CvatDetectionDataset(dataset_path)
     samples = dset.get_samples_annotations()
+    cls_names = list(dset.get_class_to_index().keys())
 
     # Shuffle samples
     random.seed(random_seed)
@@ -47,12 +48,10 @@ def main(
         subset_annots_pth = subset_dir / 'annotations.xml'
         subset_images_dir.mkdir(parents=True)
 
-        # Replace samples of dataset instance to put into xml creator
-        dset._samples = subset_samples
-
         # Create CVAT xml
         create_cvat_xml_from_dataset(
-            subset_annots_pth, dset, subset_name, verbose=verbose)
+            subset_annots_pth, cls_names, subset_samples, subset_name,
+            verbose=verbose)
 
         # Copy images
         if verbose:
