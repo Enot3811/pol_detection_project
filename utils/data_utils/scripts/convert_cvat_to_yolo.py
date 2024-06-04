@@ -183,7 +183,7 @@ def parse_args() -> argparse.Namespace:
         help='A path to save the converted datasets.')
     parser.add_argument(
         '--copy_images', action='store_true',
-        help='Whether dataset images to be copied.')
+        help='Whether to copy dataset images.')
     args = parser.parse_args()
 
     if not args.cvat_contain_dir.exists():
