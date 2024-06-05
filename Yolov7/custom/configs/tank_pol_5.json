@@ -1,0 +1,32 @@
+{
+    "random_seed": 42,
+
+    "continue_training": false,
+    "device": "cuda",
+    "lr": 0.01,
+    "weight_decay": 0.005,
+    "n_epoch": 100,
+    "work_dir": "Yolov7/work_dir/tank_pol_5",
+    "input_size": 640,
+    "optimizer": "SGD_groups",
+
+    "model_arch": "yolov7",
+    "conf_thresh": 0.01,
+    "iou_thresh": 0.3,
+    "pretrained": true,
+    "polarization": true,
+
+    "train_dset": "data/tank/tank_merged_pol/train",
+    "val_dset": "data/tank/tank_merged_pol/val",
+    "batch_size": 16,
+    "accumulate_steps": 4,
+    "num_workers": 8,
+    "shuffle_train": true,
+    "shuffle_val": false,
+    "cls_to_id": {
+        "Tank": 0
+    },
+    "mosaic_prob": 0.0,
+    "mixup_prob": 0.0,
+    "random_crop": true
+}
