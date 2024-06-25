@@ -1,7 +1,7 @@
 """A module containing some helpful functions working with Torch."""
 
 
-from typing import List, Tuple, Union, Dict
+from typing import List, Tuple, Union, Dict, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -68,10 +68,11 @@ def draw_bounding_boxes(
     bboxes: List[Bbox],
     class_labels: List[Union[str, int, float]] = None,
     confidences: List[float] = None,
+    exclude_classes: List[Union[str, int, float]] = None,
     bbox_format: str = 'xyxy',
-    line_width: int = 1,
-    color: Tuple[int, int, int] = (255, 255, 255),
-    exclude_classes: List[Union[str, int, float]] = None
+    line_width: Optional[int] = None,
+    line_color: Tuple[int, int, int] = (255, 255, 255),
+    txt_color: Tuple[int, int, int] = (255, 0, 0)
 ) -> NDArray:
     """Draw bounding boxes and corresponding labels on a given image.
 
@@ -83,18 +84,21 @@ def draw_bounding_boxes(
         The bounding boxes with shape `(n_boxes, 4)`.
     class_labels : List, optional
         Bounding boxes' labels. By default is None.
-    exclude_classes : List[str, int, float]
-        Classes which bounding boxes won't be showed. By default is None.
     confidences : List, optional
         Bounding boxes' confidences. By default is None.
+    exclude_classes : List[str, int, float]
+        Classes which bounding boxes won't be showed. By default is None.
     bbox_format : str, optional
         A bounding boxes' format. It should be one of "xyxy", "xywh" or
         "cxcywh". By default is 'xyxy'.
     line_width : int, optional
         A width of the bounding boxes' lines. By default is 1.
-    color : Tuple[int, int, int], optional
+    line_color : Tuple[int, int, int], optional
         A color of the bounding boxes' lines in RGB.
         By default is `(255, 255, 255)`.
+    txt_color : Tuple[int, int, int], optional
+        A color of the labels' text in RGB.
+        By default is `(255, 0, 0)`.
 
     Returns
     -------
@@ -104,8 +108,7 @@ def draw_bounding_boxes(
     Raises
     ------
     NotImplementedError
-        Implemented only for "xyxy", "xywh" and "cxcywh"
-        bounding boxes formats.
+        Raise when `bbox_format` is not in `("xyxy", "xywh" and "cxcywh")`.
     """
     image = image.copy()
     if exclude_classes is None:
@@ -119,6 +122,8 @@ def draw_bounding_boxes(
             raise NotImplementedError(
                 'Implemented only for "xyxy", "xywh" and "cxcywh"'
                 'bounding boxes formats.')
+
+    line_width = line_width or max(round(sum(image.shape) / 2 * 0.003), 2)
     
     for i, bbox in enumerate(bboxes):
         # Check if exclude
@@ -128,8 +133,10 @@ def draw_bounding_boxes(
         # Draw bbox
         bbox = list(map(int, bbox))  # convert float bbox to int if needed
         x1, y1, x2, y2 = bbox
-        cv2.rectangle(image, (x1, y1), (x2, y2),
-                      color=color, thickness=line_width)
+        p1 = (x1, y1)
+        p2 = (x2, y2)
+        cv2.rectangle(image, p1, p2, color=line_color, thickness=line_width,
+                      lineType=cv2.LINE_AA)
         
         # Put text if needed
         if class_labels is not None:
@@ -137,10 +144,25 @@ def draw_bounding_boxes(
         else:
             put_text = ''
         if confidences is not None:
-            put_text += 'conf: {:.2f}'.format(confidences[i])
+            put_text += f'conf: {confidences[i]:.2f}'
         if put_text != '':
-            cv2.putText(image, put_text, (x1, y1 - 2), 0, 0.3,
-                        color, 1)
+            font_thickness = max(line_width - 1, 1)
+            font_scale = line_width / 3
+
+            text_w, text_h = cv2.getTextSize(
+                put_text, 0, fontScale=font_scale, thickness=font_thickness)[0]
+            outside = p1[1] - text_h >= 3
+            p2 = (p1[0] + text_w,
+                  p1[1] - text_h - 3 if outside else p1[1] + text_h + 3)
+            cv2.rectangle(image, p1, p2, line_color, -1, cv2.LINE_AA)  # filled
+            cv2.putText(image,
+                        put_text,
+                        (p1[0], p1[1] - 2 if outside else p1[1] + text_h + 2),
+                        0,
+                        font_scale,
+                        txt_color,
+                        thickness=font_thickness,
+                        lineType=cv2.LINE_AA)
     return image
 
 
