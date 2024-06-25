@@ -124,6 +124,8 @@ def draw_bounding_boxes(
                 'bounding boxes formats.')
 
     line_width = line_width or max(round(sum(image.shape) / 2 * 0.003), 2)
+    font_thickness = max(line_width - 1, 1)
+    font_scale = line_width / 3
     
     for i, bbox in enumerate(bboxes):
         # Check if exclude
@@ -146,9 +148,6 @@ def draw_bounding_boxes(
         if confidences is not None:
             put_text += f'conf: {confidences[i]:.2f}'
         if put_text != '':
-            font_thickness = max(line_width - 1, 1)
-            font_scale = line_width / 3
-
             text_w, text_h = cv2.getTextSize(
                 put_text, 0, fontScale=font_scale, thickness=font_thickness)[0]
             outside = p1[1] - text_h >= 3
